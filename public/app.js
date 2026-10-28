@@ -17,7 +17,7 @@ import players from './views/players.js';
 import leaderboard from './views/leaderboard.js';
 import team from './views/team.js';
 import schedule from './views/schedule.js';
-import activity from './views/activity.js';
+import chat from './views/chat.js';
 import admin from './views/admin.js';
 import * as sheets from './views/sheets.js';
 import * as scoreEntry from './views/score-entry.js';
@@ -30,13 +30,14 @@ const SCREENS = {
   leaderboard: { view: leaderboard, tab: 'leaderboard', bar: true },
   team: { view: team, tab: 'leaderboard', bar: true, back: true },
   schedule: { view: schedule, tab: 'schedule', bar: true },
-  activity: { view: activity, tab: 'activity' },
+  chat: { view: chat, tab: 'chat' },
   admin: { view: admin, back: true },
 };
 
 function currentRoute() {
   const h = location.hash.slice(1) || 'home';
   if (h.startsWith('team-')) return { name: 'team', id: h.slice(5) };
+  if (h === 'activity') return { name: 'chat' }; // old name for the chat tab
   return { name: h in SCREENS ? h : 'home' };
 }
 
@@ -130,7 +131,7 @@ window.addEventListener('hashchange', () => {
   sheets.closeSheet({ quiet: true });
   render();
   refresh(); // polling pauses while a sheet is open, so catch up
-  if (shownScreen !== 'activity') window.scrollTo(0, 0);
+  if (shownScreen !== 'chat') window.scrollTo(0, 0);
 });
 window.addEventListener('popstate', sheets.onHistoryBack);
 window.addEventListener('scroll', updateTopbar, { passive: true });

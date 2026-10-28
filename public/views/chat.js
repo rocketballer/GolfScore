@@ -1,4 +1,4 @@
-// Activity: the group chat.
+// Chat: the group chat.
 import { html } from '../lib/html.js';
 import { ago, confirmTap, local, toast } from '../lib/util.js';
 import { api, app, isOrganizer, myPlayer, patchData, refresh, rerender } from '../state.js';

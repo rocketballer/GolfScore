@@ -12,7 +12,7 @@ It is a phone-first web app with the same sections as Squabbit:
 | Leaderboard › Games › Hole competitions | Hole 6 closest to the pin, hole 10 longest drive |
 | Leaderboard › Recap | Written recap, scoring progression chart, blowups, best/worst rounds, putting, birdies, doubles, streaks, front/back, scoring by par, hole difficulty, hole averages |
 | Schedule (tee times) | Same; organizer can add tee times or one-tap shotgun start |
-| Activity (group chat) | Same |
+| Activity (group chat) | Chat tab |
 | "Playing or spectating?" prompt | Same; players pick their name and score for their own team |
 
 The **Admin setup** page (`/admin`, also linked at the bottom of Home) is protected by a PIN and lets you

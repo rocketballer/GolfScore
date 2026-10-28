@@ -18,7 +18,7 @@ test('html nests fragments, joins arrays and skips empty values', () => {
 });
 
 test('every data-action in the UI has exactly one handler', async () => {
-  const modules = ['chrome', 'sheets', 'score-entry', 'home', 'players', 'leaderboard', 'team', 'schedule', 'activity', 'admin'];
+  const modules = ['chrome', 'sheets', 'score-entry', 'home', 'players', 'leaderboard', 'team', 'schedule', 'chat', 'admin'];
   const handlers = new Map();
   for (const m of modules) {
     const mod = await import(`../public/views/${m}.js`);
