@@ -54,7 +54,8 @@ netlify/functions/
   lib/seed.mjs                 the event: course, date, games, original Squabbit teams
   lib/core.mjs                 request handling: routing, organizer PIN check, lockout, errors
   lib/routes.mjs               every API action, each marked public or organizer
-  lib/repo.mjs                 all storage; saves retry if someone else saved first
+  lib/repo.mjs                 all storage, behind plain functions (getState, saveScore, ...)
+  lib/log.mjs                  "newest entry wins" storage used for scores and distances
   lib/kv.mjs                   storage adapters: Netlify Blobs, and in-memory for dev/tests
   lib/validate.mjs             cleans request input
 ```
@@ -75,6 +76,12 @@ standings, server limits and recap line all read from it.
 - Templates escape all text unless it's explicitly marked `raw()`.
 - Score entry is honor-system by design: the screens only offer scoring for your own team,
   but the server accepts any team's score.
+
+**Simultaneous saves.** Every score or distance save writes its own small entry rather
+than editing a shared scorecard, so two people saving at the same moment can't overwrite
+each other. Netlify's "only save if unchanged" check proved unreliable under truly
+simultaneous writes, so this design doesn't rely on it. Chat still uses that check with
+retries; a lost message would need two people to press Send within milliseconds of each other.
 
 **Live updates.** The app polls `/api/state` every 5 seconds and redraws only when something
 changed. Redraws never interrupt someone typing.

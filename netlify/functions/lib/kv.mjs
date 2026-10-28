@@ -5,6 +5,8 @@
 //   write(key, value)         -> unconditional write
 //   writeIf(key, value, tag)  -> true if written; false if the key changed since `tag`
 //                                (tag null means "only if the key doesn't exist yet")
+//   list(prefix)              -> every key starting with prefix, sorted
+//   remove(key)
 
 /** Netlify Blobs store (from getStore). */
 export function blobsKV(store) {
@@ -20,6 +22,8 @@ export function blobsKV(store) {
       const r = await store.set(key, JSON.stringify(value), tag ? { onlyIfMatch: tag } : { onlyIfNew: true });
       return r.modified;
     },
+    async list(prefix) { return (await store.list({ prefix })).blobs.map((b) => b.key).sort(); },
+    async remove(key) { await store.delete(key); },
   };
 }
 
@@ -39,5 +43,7 @@ export function memoryKV() {
       m.set(key, { value: structuredClone(value), tag: String(++version) });
       return true;
     },
+    async list(prefix) { return [...m.keys()].filter((k) => k.startsWith(prefix)).sort(); },
+    async remove(key) { m.delete(key); },
   };
 }

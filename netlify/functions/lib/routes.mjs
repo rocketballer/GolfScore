@@ -26,14 +26,7 @@ export const routes = {
       const strokes = int(body.strokes, SCORE_LIMITS.strokes, 'Strokes');
       const putts = int(body.putts, SCORE_LIMITS.putts, 'Putts');
       const by = cleanText(body.by);
-      const card = await repo.updateCard(team.id, (c) => {
-        if (strokes === null) { delete c.holes[hole]; delete c.putts[hole]; }
-        else {
-          c.holes[hole] = strokes;
-          if (putts === null) delete c.putts[hole]; else c.putts[hole] = putts;
-        }
-        return { ...c, updatedAt: new Date().toISOString(), updatedBy: by };
-      });
+      const card = await repo.saveScore(team.id, hole, { strokes, putts: strokes === null ? null : putts, by });
       return { ok: true, card };
     },
   },
@@ -47,11 +40,7 @@ export const routes = {
       const player = config.teams.flatMap((t) => t.players).find((p) => p.id === body.playerId);
       if (!player) throw badRequest('Unknown player.');
       const value = decimal(body.value, { min: 0, max: gameType(game).max }, 'Distance');
-      const games = await repo.updateGames((all) => {
-        const list = (all[game.id] || []).filter((e) => e.playerId !== player.id);
-        if (value !== null) list.push({ playerId: player.id, value, at: new Date().toISOString() });
-        return { ...all, [game.id]: list };
-      });
+      const games = await repo.saveDistance(game.id, player.id, value);
       return { ok: true, games };
     },
   },
@@ -86,15 +75,16 @@ export const routes = {
   'POST admin/clear-scores': {
     access: 'organizer',
     async run({ body, repo }) {
-      const config = await repo.getConfig();
-      await repo.clearCards(body.teamId ? [body.teamId] : config.teams.map((t) => t.id));
+      const ids = (await repo.getConfig()).teams.map((t) => t.id);
+      if (body.teamId && !ids.includes(body.teamId)) throw badRequest('Unknown team.');
+      await repo.clearScores(body.teamId ? [body.teamId] : ids);
       return { ok: true };
     },
   },
 
   'POST admin/clear-games': {
     access: 'organizer',
-    async run({ repo }) { await repo.clearGames(); return { ok: true }; },
+    async run({ repo }) { await repo.clearDistances(); return { ok: true }; },
   },
 
   'POST admin/chat-delete': {
