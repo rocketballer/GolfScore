@@ -3,7 +3,8 @@
 import { html } from '../lib/html.js';
 import { $, confirmTap, setPath, toast } from '../lib/util.js';
 import { HCP_METHODS } from '../shared/rules.js';
-import { api, app, isOrganizer, refresh, rerender, setOrganizerPin, tournament } from '../state.js';
+import { playOrder, teamHandicap } from '../scoring.js';
+import { api, app, holes, isOrganizer, refresh, rerender, setOrganizerPin, tournament } from '../state.js';
 
 let draft = null; // { teams, teeTimes, settings }: what the organizer is editing
 
@@ -17,8 +18,9 @@ function addMinutes(hhmm, minutes) {
 // An input bound to a draft field: data-path says where its value goes.
 const field = (path, value, label) =>
   html`<input class="input grow" data-action="admin-set" data-path="${path}" value="${value ?? ''}" aria-label="${label}">`;
+// Handicap fields redraw as you type so the team handicap shown next to them stays current.
 const numField = (path, value, placeholder, label) =>
-  html`<input class="input" type="number" step="0.1" data-action="admin-set" data-type="number" data-path="${path}" value="${value ?? ''}" placeholder="${placeholder}" aria-label="${label}">`;
+  html`<input class="input" type="number" step="0.1" data-action="admin-set" data-type="number" data-redraw="1" data-path="${path}" value="${value ?? ''}" placeholder="${placeholder}" aria-label="${label}">`;
 
 function lockedView() {
   return html`<div class="card card-plain stack"><h2 class="flush">Admin setup</h2>
@@ -32,6 +34,7 @@ function teamEditor(t, ti) {
     <div class="row">${field(`teams.${ti}.name`, t.name, 'Team name')}
       ${numField(`teams.${ti}.hcpOverride`, t.hcpOverride, 'Team hcp', 'Team handicap override')}
       <button class="x-btn" data-action="admin-del-team" data-team="${ti}" title="Remove team">×</button></div>
+    ${teamHcpNote(t)}
     ${t.players.map((p, pi) => html`<div class="admin-player">
       ${field(`teams.${ti}.players.${pi}.name`, p.name, 'Player name')}
       ${numField(`teams.${ti}.players.${pi}.hcp`, p.hcp, 'Hcp', 'Handicap')}
@@ -41,6 +44,36 @@ function teamEditor(t, ti) {
         <option value="">Move player to…</option>
         ${t.players.map((p, pi) => others.map(([o, oi]) => html`<option value="${pi}:${oi}">${p.name} → ${o.name}</option>`))}</select>`}</div>
   </div>`;
+}
+
+/** "Team handicap: 6", with a warning when only some players have a handicap. */
+function teamHcpNote(t) {
+  const withHcp = t.players.filter((p) => p.hcp !== null && p.hcp !== undefined && p.hcp !== '').length;
+  const hcp = teamHandicap(t, draft.settings);
+  if (hcp === null) return withHcp ? '' : html`<div class="small muted">No handicaps yet: this team plays gross.</div>`;
+  const source = t.hcpOverride !== null && t.hcpOverride !== undefined ? 'set by you' : `from ${withHcp} of ${t.players.length} players`;
+  return html`<div class="small ${withHcp < t.players.length && t.hcpOverride == null ? 'warn' : 'muted'}">Team handicap: <b>${hcp}</b> (${source})${
+    withHcp < t.players.length && t.hcpOverride == null && ' · add the missing handicaps, or set a team handicap'}</div>`;
+}
+
+/** Who has finished, who is missing holes, and the switch to close or reopen scoring. */
+function scoringCard() {
+  const rows = app.data.teams.map((t) => {
+    const card = app.data.scores[t.id] || { holes: {} };
+    const missing = playOrder(app.data.teeTimes, t.id, holes().length).filter((n) => card.holes[n] == null);
+    return { team: t, done: holes().length - missing.length, missing };
+  });
+  const finished = rows.filter((r) => !r.missing.length).length;
+  const locked = app.data.settings.locked;
+  return html`<div class="card"><div class="card-head">Scoring</div><div class="card-body stack">
+    <div class="row spread"><div><b>${locked ? 'Scoring is closed' : 'Scoring is open'}</b>
+      <div class="small muted">${finished} of ${rows.length} teams finished</div></div>
+      <button class="btn ${locked ? 'btn-outline' : 'btn-danger'}" data-action="admin-lock" data-locked="${locked ? '0' : '1'}">${locked ? 'Reopen scoring' : 'Close scoring…'}</button></div>
+    <div class="status-list">${rows.map((r) => html`<div class="status-row"><span>${r.team.name}</span>
+      <span class="small ${r.missing.length ? 'muted' : 'green'}">${r.missing.length
+        ? (r.done ? `${r.done}/18 · missing ${r.missing.length > 6 ? `${r.missing.length} holes` : `hole${r.missing.length > 1 ? 's' : ''} ${r.missing.join(', ')}`}` : 'not started')
+        : 'Finished'}</span></div>`)}</div>
+  </div></div>`;
 }
 
 function teeTimeEditor(g, gi) {
@@ -58,7 +91,8 @@ function render() {
   const s = draft.settings;
   return html`
     <div class="row spread"><h2 class="flush">Admin setup</h2><button class="link-btn" data-action="admin-sign-out">Sign out</button></div>
-    <p class="small muted flush">Changes to settings, teams and tee times apply when you tap <b>Save changes</b>. The Reset buttons at the bottom act right away.</p>
+    <p class="small muted flush">Changes to settings, teams and tee times apply when you tap <b>Save changes</b>. The Scoring and Reset buttons act right away.</p>
+    ${scoringCard()}
     <div class="card"><div class="card-head">Event settings</div><div class="card-body stack">
       <div class="field"><label for="a-tee">Tees</label><select class="input" id="a-tee" data-action="admin-set" data-path="settings.tee">
         ${tournament().course.tees.map((t) => html`<option ${t.id === s.tee && 'selected'}>${t.id}</option>`)}</select></div>
@@ -67,7 +101,6 @@ function render() {
           ${Object.entries(HCP_METHODS).map(([k, label]) => html`<option value="${k}" ${s.teamHcpMethod === k && 'selected'}>${label}</option>`)}</select></div>
       ${s.teamHcpMethod === 'pct' && html`<div class="field"><label for="a-pct">Percent of combined handicaps</label>
         <input class="input" id="a-pct" type="number" min="0" max="100" data-action="admin-set" data-type="number" data-path="settings.teamHcpPct" value="${s.teamHcpPct}"></div>`}
-      <label class="check"><input type="checkbox" data-action="admin-set" data-type="bool" data-path="settings.locked" ${s.locked && 'checked'}> Close scoring (players can no longer change scores)</label>
       <div class="field"><label for="a-ann">Announcement on the Home tab</label>
         <input class="input" id="a-ann" maxlength="300" data-action="admin-set" data-path="settings.announcement" value="${s.announcement}" placeholder="e.g. Shotgun start at noon, be there by 11:30"></div>
     </div></div>
@@ -118,7 +151,6 @@ async function run(path, body, done) {
 
 export default {
   render,
-  whileTyping: () => {}, // never redraw under the organizer's cursor
   leave: () => { draft = null; },
   actions: {
     'admin-unlock': async (_, form) => {
@@ -160,8 +192,17 @@ export default {
 
     'admin-save': async (_, el) => {
       el.disabled = true;
-      if (await run('admin/config', draft, 'Saved')) { draft = null; await refresh(); rerender(); }
+      // Scoring open/closed has its own button, so a stale draft never reopens or closes it.
+      const { locked, ...settings } = draft.settings;
+      if (await run('admin/config', { ...draft, settings }, 'Saved')) { draft = null; await refresh(); rerender(); }
       el.disabled = false;
+    },
+    'admin-lock': async ({ locked }, el) => {
+      const close = locked === '1';
+      const act = async () => {
+        if (await run('admin/config', { settings: { locked: close } }, close ? 'Scoring closed' : 'Scoring reopened')) { await refresh(); rerender(); }
+      };
+      if (close) confirmTap(el, act); else act();
     },
     'admin-clear-scores': (_, el) => confirmTap(el, async () => {
       if (await run('admin/clear-scores', { teamId: $('#clear-team').value || undefined }, 'Scores cleared')) refresh();

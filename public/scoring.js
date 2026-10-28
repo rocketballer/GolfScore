@@ -12,6 +12,25 @@ export function teamHandicap(team, settings) {
   return Math.round(hcps.reduce((s, h) => s + h, 0) * (settings.teamHcpPct / 100));
 }
 
+/** Hole numbers in the order a team plays them (a shotgun start begins mid-course). */
+export function playOrder(teeTimes, teamId, holeCount = 18) {
+  const start = teeTimes.find((g) => g.teamIds.includes(teamId))?.startHole || 1;
+  return Array.from({ length: holeCount }, (_, i) => ((start - 1 + i) % holeCount) + 1);
+}
+
+/**
+ * Adds rank labels to a list already sorted best first: equal values share a
+ * rank and get a "T" ("1", "T2", "T2", "4"). `place` is the number alone.
+ */
+export function withRanks(list, valueOf = (e) => e.value) {
+  return list.map((e, i) => {
+    let first = i;
+    while (first > 0 && valueOf(list[first - 1]) === valueOf(e)) first--;
+    const tied = first < i || (i + 1 < list.length && valueOf(list[i + 1]) === valueOf(e));
+    return { ...e, place: first + 1, rank: `${tied ? 'T' : ''}${first + 1}` };
+  });
+}
+
 /** Strokes a handicap receives on a hole with stroke index `si`. */
 export function strokesOnHole(hcp, si) {
   if (!hcp) return 0;
@@ -95,9 +114,11 @@ export function recap(state) {
   const holeExtremes = (worst) => rounds.flatMap((r) => played(r).map((x) => ({ team: r.team, value: x.toPar, hole: x.n })))
     .sort(worst ? desc : asc);
 
+  // Streaks and the progression chart follow the order each team actually played.
+  const inPlayOrder = (r) => playOrder(state.teeTimes, r.team.id, holes.length).map((n) => r.rows[n - 1]);
   const streak = (r, ok) => {
     let best = 0, cur = 0;
-    for (const x of r.rows) {
+    for (const x of inPlayOrder(r)) {
       if (x.gross === null) { cur = 0; continue; }
       cur = ok(x) ? cur + 1 : 0;
       best = Math.max(best, cur);
@@ -142,9 +163,12 @@ export function recap(state) {
     hard: bySi(1, 6).sort(asc), hardw: bySi(1, 6).sort(desc),
     easy: bySi(13, 18).sort(asc), easyw: bySi(13, 18).sort(desc),
     holeAvg,
+    // Score to par after each hole played, in play order: points[i] is after the (i+1)th hole played.
     progression: rounds.map((r) => {
       let run = 0;
-      return { team: r.team, points: r.rows.map((x) => (x.gross === null ? null : (run += x.toPar))) };
+      const points = inPlayOrder(r).filter((x) => x.gross !== null).map((x) => (run += x.toPar));
+      return { team: r.team, points };
     }),
+    aces: rounds.flatMap((r) => played(r).filter((x) => x.gross === 1).map((x) => ({ team: r.team, hole: x.n }))),
   };
 }

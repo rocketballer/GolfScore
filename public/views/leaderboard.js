@@ -1,7 +1,7 @@
 // Leaderboard › Scramble (overall list or hole-by-hole grid), plus the Games and Recap sections.
 import { html } from '../lib/html.js';
 import { avatar, chevron, local } from '../lib/util.js';
-import { app, canScore, hasHandicaps, holes, rerender, settings, standings, useNet } from '../state.js';
+import { app, canScore, hasHandicaps, holes, rerender, scoringOpen, settings, standings, useNet } from '../state.js';
 import { scoreMark, thruText, toPar, underClass } from './common.js';
 import games from './games.js';
 import recap from './recap.js';
@@ -42,7 +42,7 @@ function grid(rows, net) {
     </thead><tbody>${rows.map((r) => html`<tr>
       <td class="sticky"><a class="plain" href="#team-${r.team.id}"><span class="muted small">${r.pos}</span> <b>${r.team.name}</b></a></td>
       <td class="tot ${underClass(r, net)}">${toPar(r, net)}</td>${r.rows.map((x) => cell(r, x))}</tr>`)}</tbody></table></div>
-    <p class="small muted">Tap a <span class="green">+</span> on your team's row to enter a score. Swipe sideways for the back nine.</p>`;
+    <p class="small muted">${scoringOpen() && html`Tap a <span class="green">+</span> on your team's row to enter a score. `}Swipe sideways for the back nine.</p>`;
 }
 
 function scramble() {
@@ -54,7 +54,9 @@ function scramble() {
       ${chip('lb-mode', 'mode', 'round', app.ui.lbMode === 'round', 'Round 1')}</div>
       ${hasHandicaps() && html`<div class="chips">${chip('lb-net', 'net', '0', !net, 'Gross')}${chip('lb-net', 'net', '1', net, 'Net')}</div>`}
     </div>
-    <div class="small muted"><span class="live-dot"></span>${app.online ? 'Live · updates every few seconds' : 'Offline · showing last scores'}${settings().locked && ' · Scoring closed'}</div>
+    <div class="small muted">${settings().locked
+      ? html`<b>Final results</b> · scoring is closed`
+      : html`<span class="live-dot"></span>${app.online ? 'Live · updates every few seconds' : 'Offline · showing last scores'}`}</div>
     ${app.ui.lbMode === 'round' ? grid(rows, net) : overall(rows, net)}`;
 }
 
@@ -66,7 +68,6 @@ function render() {
 
 export default {
   render,
-  whileTyping: games.whileTyping,
   actions: {
     ...games.actions,
     ...recap.actions,

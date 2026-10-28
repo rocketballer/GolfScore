@@ -7,6 +7,8 @@ import { openScore } from './score-entry.js';
 export const isSheetOpen = () => !$('#sheet').hidden;
 
 export function openSheet(content, { center = false } = {}) {
+  // An open sheet gets its own history entry, so the phone's Back button closes it.
+  if (!isSheetOpen()) history.pushState({ sheet: true }, '');
   const s = $('#sheet');
   s.innerHTML = String(content);
   s.classList.toggle('center', center);
@@ -15,9 +17,16 @@ export function openSheet(content, { center = false } = {}) {
   document.body.style.overflow = 'hidden';
 }
 
-/** Closes the sheet. Polling pauses while a sheet is open, so catch up afterwards. */
-export function closeSheet({ quiet = false } = {}) {
-  if (!isSheetOpen()) return;
+let goToAfterBack = null;
+
+/**
+ * Closes the sheet. Polling pauses while a sheet is open, so catch up afterwards.
+ * `goTo` (a "#screen" hash) opens another screen once the sheet's history entry is gone.
+ */
+export function closeSheet({ quiet = false, goTo = null } = {}) {
+  if (!isSheetOpen()) { if (goTo) { location.hash = goTo; rerender(); } return; }
+  if (history.state?.sheet) { goToAfterBack = goTo; history.back(); } // drop the sheet's history entry
+  else if (goTo) { location.hash = goTo; rerender(); }
   $('#sheet').hidden = true;
   $('#sheet-backdrop').hidden = true;
   document.body.style.overflow = '';
@@ -80,3 +89,13 @@ export const actions = {
   'sheet-close': () => closeSheet(),
   'enter-scores': () => startScoring(),
 };
+
+/** Back button (popstate): finishes a close-then-navigate, or closes an open sheet instead of leaving the screen. */
+export function onHistoryBack() {
+  if (goToAfterBack) { const hash = goToAfterBack; goToAfterBack = null; location.hash = hash; rerender(); return; }
+  if (!isSheetOpen() || history.state?.sheet) return;
+  $('#sheet').hidden = true;
+  $('#sheet-backdrop').hidden = true;
+  document.body.style.overflow = '';
+  refresh();
+}

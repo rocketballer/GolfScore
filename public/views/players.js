@@ -1,6 +1,6 @@
 // Home › Players: searchable, sortable list of everyone in the event.
 import { html, raw } from '../lib/html.js';
-import { $, avatar } from '../lib/util.js';
+import { avatar } from '../lib/util.js';
 import { allPlayers, app, rerender } from '../state.js';
 import { homeChips } from './common.js';
 
@@ -17,7 +17,9 @@ function list() {
   const q = playerQuery.toLowerCase();
   const rows = allPlayers()
     .filter((p) => !q || p.name.toLowerCase().includes(q) || p.team.name.toLowerCase().includes(q))
-    .sort((a, b) => COMPARE[playerSort](a, b) * playerDir || COMPARE.name(a, b));
+    // Players without a handicap always go last, whichever way the list is sorted.
+    .sort((a, b) => (playerSort === 'hcp' && (a.hcp == null) !== (b.hcp == null) ? (a.hcp == null ? 1 : -1)
+      : COMPARE[playerSort](a, b) * playerDir || COMPARE.name(a, b)));
   if (!rows.length) return html`<p class="empty">No players match that search.</p>`;
   return rows.map((p) => html`<div class="prow"><span class="who">${avatar(p.name)}<span>${p.name}</span></span>
     <span class="small">${p.team.name}</span><span class="small ${p.hcp == null && 'muted'}">${p.hcp == null ? 'Not set' : p.hcp}</span></div>`);
@@ -35,13 +37,10 @@ function render() {
     </div>`;
 }
 
-const redrawList = () => { $('#player-list').innerHTML = String(list()); };
-
 export default {
   render,
-  whileTyping: redrawList,
   actions: {
-    'player-search': (_, el) => { app.ui.playerQuery = el.value; redrawList(); },
+    'player-search': (_, el) => { app.ui.playerQuery = el.value; rerender(); },
     'player-sort': ({ key }) => {
       if (app.ui.playerSort === key) app.ui.playerDir *= -1;
       else Object.assign(app.ui, { playerSort: key, playerDir: 1 });

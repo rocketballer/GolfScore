@@ -1,8 +1,9 @@
 // Activity: the group chat.
 import { html } from '../lib/html.js';
-import { $, ago, local, toast } from '../lib/util.js';
-import { api, app, isOrganizer, myPlayer, patchData, refresh } from '../state.js';
+import { ago, confirmTap, local, toast } from '../lib/util.js';
+import { api, app, isOrganizer, myPlayer, patchData, refresh, rerender } from '../state.js';
 
+// Players post under their own name; spectators choose one (kept on this phone).
 const chatName = () => myPlayer()?.name || local.get('chatName', '');
 
 function messages() {
@@ -15,11 +16,16 @@ function messages() {
 }
 
 function render() {
+  const name = chatName();
   return html`${messages()}
     <form class="composer" data-action="chat-send">
-      ${!chatName() && html`<input class="input chat-name" name="name" placeholder="Your name" maxlength="40" aria-label="Your name">`}
-      <textarea name="text" rows="1" maxlength="500" placeholder="Message the group" aria-label="Message" data-action="chat-grow"></textarea>
-      <button class="btn btn-primary" type="submit">Send</button>
+      <div class="composer-who small muted">${name
+        ? html`Posting as <b>${name}</b>${!myPlayer() && html` · <button type="button" class="link-btn" data-action="chat-rename">change</button>`}`
+        : html`<input class="input" name="name" placeholder="Your name" maxlength="40" aria-label="Your name" data-action="chat-name-draft" value="${app.ui.chatNameDraft}">`}</div>
+      <div class="row composer-row">
+        <textarea class="grow" name="text" rows="2" maxlength="500" placeholder="Message the group" aria-label="Message" data-action="chat-draft">${app.ui.chatDraft}</textarea>
+        <button class="btn btn-primary" type="submit">Send</button>
+      </div>
     </form>`;
 }
 
@@ -30,29 +36,31 @@ export default {
   render,
   mounted: scrollToNewest,
   leave: () => { scrolledDown = false; },
-  /** While someone types, refresh only the messages so the draft survives. */
-  whileTyping: () => { $('#chat').outerHTML = String(messages()); },
   actions: {
-    'chat-grow': (_, el) => { el.style.height = 'auto'; el.style.height = Math.min(120, el.scrollHeight) + 'px'; },
+    // Keep the unsent message if the person switches tabs.
+    'chat-draft': (_, el) => { app.ui.chatDraft = el.value; },
+    'chat-name-draft': (_, el) => { app.ui.chatNameDraft = el.value; },
+    'chat-rename': () => { local.set('chatName', null); rerender(); },
     'chat-send': async (_, form) => {
       const name = form.elements.name ? form.elements.name.value.trim() : chatName();
       const text = form.elements.text.value.trim();
       if (!name) { toast('Add your name first'); form.elements.name?.focus(); return; }
       if (!text) return;
-      if (form.elements.name) local.set('chatName', name);
       const button = form.querySelector('[type=submit]');
       button.disabled = true;
       try {
         const out = await api('chat', { name, text });
+        if (form.elements.name) { local.set('chatName', out.name); app.ui.chatNameDraft = ''; }
         form.elements.text.value = '';
+        app.ui.chatDraft = '';
         form.elements.text.blur();
         scrolledDown = false;
         patchData({ chat: out.chat });
       } catch (e) { toast(e.message); }
       button.disabled = false;
     },
-    'chat-delete': async ({ id }) => {
-      try { await api('admin/chat-delete', { id }); refresh(); } catch (e) { toast(e.message); }
-    },
+    'chat-delete': (_, el) => confirmTap(el, async () => {
+      try { await api('admin/chat-delete', { id: el.dataset.id }); toast('Message deleted'); refresh(); } catch (e) { toast(e.message); }
+    }),
   },
 };

@@ -1,8 +1,8 @@
 // Leaderboard › Recap: written summary, progression chart and stat cards.
 import { html, raw } from '../lib/html.js';
-import { fmtToPar, recap } from '../scoring.js';
-import { gameStandings, gameType } from '../shared/rules.js';
-import { app, findPlayer, rerender, standings, tournament } from '../state.js';
+import { fmtToPar, recap, withRanks } from '../scoring.js';
+import { gameStandings, winnerLine } from '../shared/rules.js';
+import { app, findPlayer, hasHandicaps, rerender, settings, standings, tournament } from '../state.js';
 import { standingRow } from './common.js';
 
 const TEAM_COLORS = ['#1c64d6', '#e8590c', '#2b9348', '#15aabf', '#be4bdb', '#74b816', '#1d3fa8', '#e03131', '#5c3d2e', '#f59f00', '#495057', '#0b7285'];
@@ -45,20 +45,41 @@ function story(rc, board) {
   else if (tied.length > 1) parts.push(`${tied.map((r) => r.team.name).join(' and ')} finished tied for the ${t.name} title at ${fmtToPar(lead.toPar)} (${lead.gross}).`);
   else parts.push(`${lead.team.name} won the ${t.name} at ${fmtToPar(lead.toPar)}, a ${lead.gross} at ${t.course.name}.`);
   if (finished && all[1] && all[1].posNum !== lead.posNum) parts.push(`${all[1].team.name} took second at ${fmtToPar(all[1].toPar)}.`);
-  if (rc.birdies[0]) parts.push(`${rc.birdies[0].team.name} made the most birdies (${rc.birdies[0].value}).`);
-  if (rc.eagles[0]) parts.push(`${rc.eagles[0].team.name} carded ${rc.eagles[0].value === 1 ? 'an eagle' : `${rc.eagles[0].value} eagles`}.`);
+  if (finished && hasHandicaps()) {
+    const net = standings(true).filter((r) => r.thru);
+    const netLeaders = net.filter((r) => r.posNum === net[0].posNum);
+    parts.push(`On net, ${listNames(netLeaders.map((r) => r.team.name))} ${netLeaders.length > 1 ? 'tied for the win' : 'won'} at ${fmtToPar(net[0].netToPar)}.`);
+  }
+  for (const ace of rc.aces) parts.push(`${ace.team.name} made a hole-in-one on hole ${ace.hole}!`);
+  if (rc.birdies[0]) {
+    const top = rc.birdies.filter((e) => e.value === rc.birdies[0].value);
+    parts.push(`${listNames(top.map((e) => e.team.name))} made the most birdies (${top[0].value}${top.length > 1 ? ' each' : ''}).`);
+  }
+  // Eagles that weren't already reported as a hole-in-one (an ace on a par 3 is also an eagle).
+  const eagleTeams = rc.eagles
+    .map((e) => ({ ...e, value: e.value - rc.aces.filter((a) => a.team.id === e.team.id).length }))
+    .filter((e) => e.value > 0);
+  if (eagleTeams.length) parts.push(`${listNames(eagleTeams.map((e) => e.team.name))} carded ${eagleTeams.length === 1 && eagleTeams[0].value === 1 ? 'an eagle' : 'eagles'}.`);
   const hardest = rc.holeAvg.filter((h) => h.n).sort((a, b) => b.value - a.value)[0];
   if (hardest) parts.push(`Hole ${hardest.hole} played toughest, averaging ${fmtToPar(+hardest.value.toFixed(2))} to par.`);
   if (rc.blowup[0]) parts.push(`The biggest blowup was ${rc.blowup[0].team.name}'s ${fmtToPar(rc.blowup[0].value)} on hole ${rc.blowup[0].hole}.`);
   for (const g of t.games) {
     const best = gameStandings(g, app.data.games[g.id])[0];
     const p = best && findPlayer(best.playerId);
-    if (p) parts.push(gameType(g).winnerLine(p.name, g, best.value));
+    if (p) parts.push(winnerLine(g, p.name, best.value, settings().locked));
   }
   return parts.join(' ');
 }
 
-/** Line chart of each team's score to par after every hole. Under par plots higher. */
+/** "A", "A and B", "A, B and C" */
+function listNames(names) {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+/**
+ * Line chart of each team's score to par after each hole PLAYED (so shotgun
+ * starts line up: point 5 is every team's fifth hole). Under par plots higher.
+ */
 function chart(rc) {
   const W = 360, H = 230, L = 32, R = 8, TOP = 10, B = 26;
   const values = rc.progression.flatMap((p) => p.points.filter((v) => v !== null));
@@ -66,7 +87,7 @@ function chart(rc) {
   const x = (i) => L + (i * (W - L - R)) / 17;
   const y = (v) => TOP + ((v + lim) * (H - TOP - B)) / (2 * lim);
   const ticks = [-lim, -lim / 2, 0, lim / 2, lim];
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Score to par after each hole, by team">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Score to par after each hole played, by team">`;
   for (const t of ticks) svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="#e3e7e4" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 4}" font-size="10" text-anchor="end" fill="#7b847e">${fmtToPar(t)}</text>`;
   for (let i = 0; i < 18; i++) svg += `<text x="${x(i)}" y="${H - 8}" font-size="9.5" text-anchor="middle" fill="#7b847e">${i + 1}</text>`;
   app.data.teams.forEach((team, ti) => {
@@ -96,7 +117,7 @@ function statCard(rc, group) {
       <button class="chip ${k === pick && 'on'}" data-action="recap-pick" data-group="${group.key}" data-stat="${k}">${label}</button>`)}</div>`}
     <div class="stat-title">${title}</div>
     ${list.length
-      ? html`${(more ? list : list.slice(0, 3)).map((e, i) => standingRow(i + 1, html`<b>${e.team.name}</b>`, SHOW[show](e)))}
+      ? html`${withRanks(list).slice(0, more ? list.length : 3).map((e) => standingRow(e.rank, html`<b>${e.team.name}</b>`, SHOW[show](e), { place: e.place }))}
         ${list.length > 3 && html`<div class="text-center"><button class="btn btn-outline btn-small" data-action="recap-more" data-group="${group.key}">${more ? 'Show less' : `${list.length - 3} more`}</button></div>`}`
       : html`<p class="stat-empty">Not enough data yet</p>`}
   </div>`;
@@ -112,6 +133,7 @@ function render() {
         : html`<p class="stat-empty">Once a team finishes its round, the story of the tournament shows up here: the results, the standouts, and how it played out.<br><span class="small">Waiting for the first completed round</span></p>`}
     </div>
     <div class="card card-plain chart"><div class="eyebrow">Scoring progression</div><div class="stat-title">${tournament().format}</div>${chart(rc)}
+      <div class="small muted text-center">Holes played (each team from its own starting hole)</div>
       <div class="legend">${app.data.teams.map((t, i) => html`<span><i style="background:${TEAM_COLORS[i % TEAM_COLORS.length]}"></i>${t.name}</span>`)}</div></div>
     ${STAT_GROUPS.map((g) => statCard(rc, g))}
     <div class="card card-plain"><div class="eyebrow">Hole averages</div>

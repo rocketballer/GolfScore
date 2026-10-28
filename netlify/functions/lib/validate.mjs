@@ -6,8 +6,20 @@ import { badRequest } from './http.mjs';
 
 const blank = (v) => v === null || v === undefined || v === '';
 
+// Cuts by what people see as one character, so emoji (even 🏌️‍♂️) are never split.
+const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
+const firstChars = (text, max) => Array.from(graphemes.segment(text), (g) => g.segment).slice(0, max).join('');
+
+/** Trimmed single-line text, at most `max` characters. */
 export function cleanText(v, max = 40) {
-  return String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+  if (typeof v !== 'string') return '';
+  return firstChars(v.replace(/\s+/g, ' ').trim(), max).trim();
+}
+
+/** Multi-line text, at most `max` characters. */
+export function cleanMessage(v, max = 500) {
+  if (typeof v !== 'string') return '';
+  return firstChars(v.trim(), max).trim();
 }
 
 /** Whole number in [min, max], or null when blank. */

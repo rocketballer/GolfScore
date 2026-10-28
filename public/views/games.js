@@ -4,6 +4,7 @@ import { avatar, toast } from '../lib/util.js';
 import { gameLabel, gameStandings, gameType, gameValueFromFields } from '../shared/rules.js';
 import { allPlayers, api, app, findPlayer, holes, isOrganizer, myPlayer, patchData, scoringOpen, settings, tournament } from '../state.js';
 import { standingRow } from './common.js';
+import { withRanks } from '../scoring.js';
 
 function entryForm(game) {
   const type = gameType(game);
@@ -26,16 +27,16 @@ function entryForm(game) {
 function gameCard(game) {
   const type = gameType(game);
   const h = holes()[game.hole - 1];
-  const entries = gameStandings(game, app.data.games[game.id]);
+  const entries = withRanks(gameStandings(game, app.data.games[game.id]));
   return html`<div class="card card-plain stack">
     <div class="game-title">${gameLabel(game)}</div>
     <div class="small muted text-center">Par ${h.par} · ${h.yards[settings().tee]} yds · ${type.rule}</div>
     ${entries.length
-      ? html`<div>${entries.map((e, i) => {
+      ? html`<div>${entries.map((e) => {
           const p = findPlayer(e.playerId);
-          return standingRow(i + 1, html`${avatar(p?.name || '?')} <i>${p?.name || 'Removed player'}</i> <span class="small muted">${p?.team.name}</span>`,
+          return standingRow(e.rank, html`${avatar(p?.name || '?')} <i>${p?.name || 'Removed player'}</i> <span class="small muted">${p?.team.name}</span>`,
             type.format(e.value),
-            { extra: isOrganizer() && html`<button class="x-btn" title="Remove" data-action="game-remove" data-game="${game.id}" data-player="${e.playerId}">×</button>` });
+            { place: e.place, extra: isOrganizer() && html`<button class="x-btn" title="Remove" data-action="game-remove" data-game="${game.id}" data-player="${e.playerId}">×</button>` });
         })}</div>`
       : html`<p class="stat-empty">Results will be displayed when users enter their distances</p>`}
     ${entryForm(game)}
@@ -52,7 +53,6 @@ async function saveEntry(gameId, playerId, value, done) {
 
 export default {
   render: () => html`<div class="chips"><span class="chip on">Hole competitions</span></div>${tournament().games.map(gameCard)}`,
-  whileTyping: () => {}, // keep half-typed distances
   actions: {
     'game-save': (ds, form) => {
       const game = tournament().games.find((g) => g.id === ds.game);

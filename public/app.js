@@ -9,6 +9,7 @@
 // The handler receives (element.dataset, element, event). Each view module
 // exports its own actions; names must be unique across the app.
 import { html } from './lib/html.js';
+import { morph } from './lib/morph.js';
 import { $, dateLabel } from './lib/util.js';
 import { app, isOrganizer, myPlayer, myTeam, onRender, refresh, scoringOpen, tournament } from './state.js';
 import home from './views/home.js';
@@ -90,7 +91,9 @@ function renderChrome(route, screen) {
   const enter = $('#btn-enter');
   enter.disabled = !scoringOpen();
   enter.innerHTML = String(!scoringOpen() ? html`Scoring closed`
-    : html`Enter scores${myTeam() && html`<small>${myTeam().name}</small>`}`);
+    : myTeam() ? html`Enter scores<small>${myTeam().name}</small>`
+    : isOrganizer() ? html`Enter scores<small>Organizer</small>`
+    : html`Playing?<small>Pick your name</small>`);
   updateTopbar();
 }
 
@@ -98,7 +101,7 @@ function renderChrome(route, screen) {
 let shownHash = null;
 let askedWho = false;
 
-function render({ background = false } = {}) {
+function render() {
   const view = $('#view');
   if (!app.data) {
     if (!app.online) view.innerHTML = '<p class="empty">Can\'t reach the scoring server. Check your connection and try again.</p>';
@@ -109,16 +112,10 @@ function render({ background = false } = {}) {
   const sameScreen = shownHash === location.hash;
   renderChrome(route, screen);
 
-  // New data arriving while someone types: let the view update around the cursor.
-  const focused = document.activeElement;
-  if (background && sameScreen && screen.view.whileTyping && view.contains(focused) && focused.matches('input, textarea, select')) {
-    screen.view.whileTyping();
-    return;
-  }
-
-  const y = window.scrollY;
-  view.innerHTML = String(screen.view.render(route));
-  if (sameScreen) window.scrollTo(0, y);
+  // Same screen: update in place, so scroll positions, focus and half-typed text survive.
+  const content = String(screen.view.render(route));
+  if (sameScreen) morph(view, content);
+  else view.innerHTML = content;
   shownHash = location.hash;
   screen.view.mounted?.();
 
@@ -132,8 +129,10 @@ window.addEventListener('hashchange', () => {
   shownScreen = currentRoute().name;
   sheets.closeSheet({ quiet: true });
   render();
+  refresh(); // polling pauses while a sheet is open, so catch up
   if (shownScreen !== 'activity') window.scrollTo(0, 0);
 });
+window.addEventListener('popstate', sheets.onHistoryBack);
 window.addEventListener('scroll', updateTopbar, { passive: true });
 $('#sheet-backdrop').addEventListener('click', () => sheets.closeSheet());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') sheets.closeSheet(); });

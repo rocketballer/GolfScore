@@ -10,7 +10,7 @@
 import { TOURNAMENT, defaultConfig } from './seed.mjs';
 import { SCORE_LIMITS, gameType } from '../../../public/shared/rules.js';
 import { HttpError, badRequest } from './http.mjs';
-import { applyConfigEdits, cleanText, decimal, int } from './validate.mjs';
+import { applyConfigEdits, cleanMessage, cleanText, decimal, int } from './validate.mjs';
 
 const closed = () => new HttpError(423, 'Scoring is closed by the organizer.');
 
@@ -58,7 +58,8 @@ export const routes = {
       if (!organizer && actingPlayer(config, body.me, 'enter a distance').id !== player.id) {
         throw new HttpError(403, 'You can only enter your own distance.');
       }
-      const value = decimal(body.value, { min: 0, max: gameType(game).max }, 'Distance');
+      const { min, max } = gameType(game);
+      const value = decimal(body.value, { min, max }, 'Distance');
       const games = await repo.saveDistance(game.id, player.id, value);
       return { ok: true, games };
     },
@@ -66,12 +67,15 @@ export const routes = {
 
   'POST chat': {
     access: 'public',
-    async run({ body, repo }) {
+    async run({ body, repo, organizer }) {
       const name = cleanText(body.name);
-      const text = String(body.text ?? '').trim().slice(0, 500);
+      const text = cleanMessage(body.text);
       if (!name || !text) throw badRequest('Add your name and a message.');
+      if (!organizer && name.toLowerCase() === TOURNAMENT.owner.toLowerCase()) {
+        throw new HttpError(403, `Only the organizer can post as ${TOURNAMENT.owner}. Pick another name.`);
+      }
       const chat = await repo.updateChat((list) => [...list, { id: crypto.randomUUID(), name, text, at: new Date().toISOString() }]);
-      return { ok: true, chat };
+      return { ok: true, name, chat };
     },
   },
 

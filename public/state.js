@@ -15,15 +15,14 @@ export const app = {
     open: new Set(local.get('open', [])),
     playerSort: 'name', playerDir: 1, playerQuery: '',
     recapPick: {}, recapMore: {},
+    chatDraft: '', chatNameDraft: '',
   },
 };
 
 // ----- re-rendering (app.js registers the real function) -----
-// `background: true` marks redraws nobody asked for (new data arriving),
-// which must not disturb someone who is typing.
 let renderFn = () => {};
 export const onRender = (fn) => { renderFn = fn; };
-export const rerender = (opts = {}) => renderFn(opts);
+export const rerender = () => renderFn();
 
 // ----- tournament facts -----
 export const tournament = () => app.data.tournament;
@@ -68,7 +67,9 @@ export async function api(path, body) {
   const headers = { 'content-type': 'application/json' };
   if (app.adminPin) headers['x-admin-pin'] = app.adminPin;
   const init = body === undefined ? { cache: 'no-store', headers } : { method: 'POST', headers, body: JSON.stringify(body) };
-  const res = await fetch('/api/' + path, init);
+  let res;
+  try { res = await fetch('/api/' + path, init); }
+  catch { throw new Error(body === undefined ? 'No connection.' : 'No connection, so nothing was saved. Try again when you have signal.'); }
   let out = {};
   try { out = await res.json(); } catch { /* no body */ }
   if (!res.ok) {
@@ -90,10 +91,10 @@ export async function refresh() {
     if (signature !== lastSignature || wasOffline) {
       lastSignature = signature;
       app.data = next;
-      rerender({ background: true });
+      rerender();
     }
   } catch {
-    if (app.online || !app.data) { app.online = false; rerender({ background: true }); }
+    if (app.online || !app.data) { app.online = false; rerender(); }
   }
 }
 

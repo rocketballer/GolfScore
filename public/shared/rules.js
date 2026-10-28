@@ -6,9 +6,9 @@ export const SCORE_LIMITS = { strokes: { min: 1, max: 20 }, putts: { min: 0, max
 
 /** How a scramble team handicap is built from player handicaps. */
 export const HCP_METHODS = {
-  scramble4: '4-person scramble: 25% / 20% / 15% / 10% (low to high)',
+  scramble4: 'Scramble: 25/20/15/10% (low to high)',
   pct: 'Percent of combined handicaps',
-  none: 'Gross only',
+  none: 'Gross only (no net)',
 };
 
 /** A team scorecard with nothing entered. Hole numbers are the keys. */
@@ -24,28 +24,35 @@ export const GAME_TYPES = {
     name: 'Closest to the pin',
     unit: 'in',
     lowerWins: true,
+    min: 0, // 0 = in the hole
     max: 3000,
     rule: 'Shortest distance from the pin wins (must be on the green)',
     fields: [
       { name: 'ft', label: 'Feet', max: 250, scale: 12 },
       { name: 'in', label: 'Inches', max: 11, scale: 1 },
     ],
-    format: (v) => `${Math.floor(v / 12)}' ${Math.round(v % 12)}"`,
-    winnerLine: (player, game) => `${player} won closest to the pin on ${game.hole}.`,
+    format: (v) => (v === 0 ? 'Hole in one' : `${Math.floor(v / 12)}' ${Math.round(v % 12)}"`),
   },
   ld: {
     name: 'Longest drive',
     unit: 'yd',
     lowerWins: false,
+    min: 1,
     max: 500,
     rule: 'Longest drive in the fairway wins',
     fields: [{ name: 'yd', label: 'Yards', max: 500, scale: 1 }],
     format: (v) => `${v} yds`,
-    winnerLine: (player, game, v) => `${player} won the long drive on ${game.hole} (${GAME_TYPES.ld.format(v)}).`,
   },
 };
 
 export const gameType = (game) => GAME_TYPES[game.type];
+
+/** "Slater won closest to the pin on hole 6 (7' 3")." — or "leads" while scoring is still open. */
+export function winnerLine(game, playerName, value, final) {
+  const type = gameType(game);
+  return `${playerName} ${final ? 'won' : 'leads'} ${type.name.toLowerCase()} on hole ${game.hole} (${type.format(value)}).`;
+}
+
 export const gameLabel = (game) => `Hole ${game.hole}: ${gameType(game).name}`;
 
 /** Turns typed field values ({ft: '12', in: '4'}) into the stored number, or null if all are blank. */

@@ -165,3 +165,21 @@ test('organizer can clear the chat', async () => {
   assert.equal((await call(ctx, 'admin/clear-chat', {}, PIN)).status, 200);
   assert.deepEqual((await call(ctx, 'state')).body.chat, []);
 });
+
+test('chat names: real text only, emoji kept whole, owner name reserved', async () => {
+  const ctx = setup();
+  assert.equal((await call(ctx, 'chat', { name: { x: 1 }, text: 'hi' })).status, 400, 'object name');
+  assert.equal((await call(ctx, 'chat', { name: 'noah slater', text: 'hi' })).status, 403, 'owner name reserved');
+  assert.equal((await call(ctx, 'chat', { name: 'Noah Slater', text: 'hi' }, PIN)).status, 200, 'organizer may use it');
+  const r = await call(ctx, 'chat', { name: 'A'.repeat(39) + '🏌️‍♂️', text: '⛳'.repeat(600) });
+  assert.equal(r.status, 200);
+  const msg = r.body.chat.at(-1);
+  assert.ok(!msg.name.includes('�') && !/[\uD800-\uDBFF]$/.test(msg.name), 'no half emoji in name');
+  assert.equal(Array.from(msg.text).length, 500);
+});
+
+test('longest drive must be at least 1 yard; closest to the pin may be 0 (in the hole)', async () => {
+  const ctx = setup();
+  assert.equal((await call(ctx, 'game', { gameId: 'ld10', playerId: 'p1-1', value: 0, me: 'p1-1' })).status, 400);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 0, me: 'p1-1' })).status, 200);
+});

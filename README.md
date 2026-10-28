@@ -47,6 +47,7 @@ public/                        static site, no build step
   shared/rules.js              rules used by browser AND server: score limits, handicap methods,
                                the empty scorecard, hole-competition types (GAME_TYPES)
   lib/html.js                  html`...` templates that escape text automatically
+  lib/morph.js                 updates the page in place, changing only what differs
   lib/util.js                  small generic helpers (storage, dates, toasts, avatars)
   views/*.js                   one file per screen; each exports render() and its actions
   img/                         header photo
@@ -84,8 +85,10 @@ each other. Netlify's "only save if unchanged" check proved unreliable under tru
 simultaneous writes, so this design doesn't rely on it. Chat still uses that check with
 retries; a lost message would need two people to press Send within milliseconds of each other.
 
-**Live updates.** The app polls `/api/state` every 5 seconds and redraws only when something
-changed. Redraws never interrupt someone typing.
+**Live updates.** The app polls `/api/state` every 5 seconds. When something changed, the
+screen is updated in place (lib/morph.js) rather than rebuilt, so scroll positions, the map,
+focused fields and half-typed text all survive. A score only shows as saved once the server
+confirms it; with no signal the score sheet stays open with the score still entered.
 
 Environment variable: `ADMIN_PIN`, the organizer PIN. Without it the organizer page stays locked.
 
