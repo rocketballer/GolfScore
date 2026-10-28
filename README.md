@@ -88,6 +88,13 @@ changed. Redraws never interrupt someone typing.
 
 Environment variable: `ADMIN_PIN`, the organizer PIN. Without it the organizer page stays locked.
 
+## Deploying
+
+Netlify deploys automatically from the `main` branch of `rocketballer/GolfScore`
+(publish directory `public`, functions from `netlify.toml`). Push to `main` and the
+live site updates within a minute or two. The organizer PIN is the `ADMIN_PIN`
+environment variable in Netlify's project settings.
+
 ## Local development
 
 ```bash
