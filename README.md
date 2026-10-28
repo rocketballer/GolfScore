@@ -33,12 +33,51 @@ scoring, post an announcement, and clear scores.
 
 Handicaps were "Not set" in Squabbit, so the board is gross until the organizer adds them.
 
-## How it runs
+## How it's organized
 
-- `public/`: static site (no build step). `scoring.js` holds the scoring math.
-- `netlify/functions/api.mjs`: one Netlify Function at `/api/*`, storing data in Netlify Blobs
-  (one blob per team scorecard, plus games, chat and config).
-- The app polls `/api/state` every 5 seconds, so every phone sees new scores within a few seconds.
+Each file owns one job, and each fact about the tournament lives in exactly one place.
+
+```
+public/                        static site, no build step
+  index.html, styles.css       page shell and styles
+  app.js                       screens list, header/tabs, action dispatcher, live polling
+  state.js                     app state: data, who is viewing, permissions, derived standings, API calls
+  scoring.js                   scoring math (handicaps, leaderboard, recap stats); no DOM
+  shared/rules.js              rules used by browser AND server: score limits, handicap methods,
+                               the empty scorecard, hole-competition types (GAME_TYPES)
+  lib/html.js                  html`...` templates that escape text automatically
+  lib/util.js                  small generic helpers (storage, dates, toasts, avatars)
+  views/*.js                   one file per screen; each exports render() and its actions
+  img/                         header photo
+netlify/functions/
+  api.mjs                      Netlify entry point (wiring only)
+  lib/seed.mjs                 the event: course, date, games, original Squabbit teams
+  lib/core.mjs                 request handling: routing, organizer PIN check, lockout, errors
+  lib/routes.mjs               every API action, each marked public or organizer
+  lib/repo.mjs                 all storage; saves retry if someone else saved first
+  lib/kv.mjs                   storage adapters: Netlify Blobs, and in-memory for dev/tests
+  lib/validate.mjs             cleans request input
+```
+
+**Buttons and forms.** Any element with `data-action="name"` runs the action of that name
+(click for buttons and links, input for text fields, change for selects and checkboxes,
+submit for forms). Each view exports its actions; `test/ui.test.mjs` fails if a
+`data-action` has no handler or a handler is never used.
+
+**Adding a hole competition.** Add `{ id, type, hole }` to `games` in `seed.mjs`. For a new
+kind of competition, add one entry to `GAME_TYPES` in `shared/rules.js`; the entry form,
+standings, server limits and recap line all read from it.
+
+**Security.**
+- Organizer actions are marked `access: 'organizer'` in `routes.mjs` and checked before
+  they run. A test confirms every one of them refuses requests without the PIN.
+- After 5 wrong PINs, that address is locked out for 15 minutes.
+- Templates escape all text unless it's explicitly marked `raw()`.
+- Score entry is honor-system by design: the screens only offer scoring for your own team,
+  but the server accepts any team's score.
+
+**Live updates.** The app polls `/api/state` every 5 seconds and redraws only when something
+changed. Redraws never interrupt someone typing.
 
 Environment variable: `ADMIN_PIN`, the organizer PIN. Without it the organizer page stays locked.
 
@@ -49,3 +88,8 @@ npm install
 ADMIN_PIN=1234 npm run dev   # http://localhost:8888, in-memory data
 npm test
 ```
+
+## Credits
+
+Header photo by [Keith Tanner](https://unsplash.com/photos/a-golf-course-is-surrounded-by-trees-EGQ0m5QyNu8)
+on Unsplash (Unsplash License).

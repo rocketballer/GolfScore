@@ -34,6 +34,7 @@ export const TOURNAMENT = {
   id: 'fighter-invitational', // also the name of the data store
   name: 'Fighter Invitational',
   format: 'Scramble',
+  teamSize: 4,
   date: '2026-10-31',
   startTime: '12:00',
   timeZone: 'America/Toronto',
