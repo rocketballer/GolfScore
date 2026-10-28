@@ -8,6 +8,7 @@
 //   - forms run on submit (the page never reloads)
 // The handler receives (element.dataset, element, event). Each view module
 // exports its own actions; names must be unique across the app.
+import { html } from './lib/html.js';
 import { $, dateLabel } from './lib/util.js';
 import { app, isOrganizer, myPlayer, myTeam, onRender, refresh, scoringOpen, tournament } from './state.js';
 import home from './views/home.js';
@@ -88,7 +89,8 @@ function renderChrome(route, screen) {
   document.body.classList.toggle('no-bar', !screen.bar);
   const enter = $('#btn-enter');
   enter.disabled = !scoringOpen();
-  enter.textContent = !scoringOpen() ? 'Scoring closed' : myTeam() ? `Enter scores · ${myTeam().name}` : 'Enter scores';
+  enter.innerHTML = String(!scoringOpen() ? html`Scoring closed`
+    : html`Enter scores${myTeam() && html`<small>${myTeam().name}</small>`}`);
   updateTopbar();
 }
 

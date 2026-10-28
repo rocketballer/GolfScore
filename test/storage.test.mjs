@@ -8,7 +8,6 @@ test('log keeps only the newest entry per item', async () => {
   const kv = memoryKV();
   const log = createLog(kv, 's');
   await log.put('t1', 7, 'a');
-  await new Promise((r) => setTimeout(r, 2));
   await log.put('t1', 7, 'b');
   await log.put('t1', 8, 'c');
   const latest = await log.latest();
@@ -35,7 +34,6 @@ test('repo scorecards: putts, clearing, who saved, unicode names', async () => {
   assert.deepEqual(card.holes, { 1: 4, 2: 3 });
   assert.deepEqual(card.putts, { 1: 2 });
   assert.equal(card.updatedBy, 'Slater');
-  await new Promise((r) => setTimeout(r, 2));
   card = await repo.saveScore('t3', 1, { strokes: null, putts: null, by: 'Søren' });
   assert.deepEqual(card.holes, { 2: 3 });
   assert.deepEqual(card.putts, {});
@@ -49,7 +47,6 @@ test('repo distances: replace, remove, decimals', async () => {
   const repo = createRepo(memoryKV());
   await repo.saveDistance('ctp6', 'p1-1', 87);
   await repo.saveDistance('ld10', 'p1-2', 285.5);
-  await new Promise((r) => setTimeout(r, 2));
   let games = await repo.saveDistance('ctp6', 'p1-1', 50);
   assert.deepEqual(games.ctp6.map((e) => e.value), [50]);
   assert.equal(games.ld10[0].value, 285.5);

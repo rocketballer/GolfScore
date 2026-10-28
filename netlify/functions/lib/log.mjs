@@ -11,7 +11,12 @@
 //
 // Payloads must not contain "/" (they are part of the key); keep them short.
 
-const stamp = () => Date.now().toString(36).padStart(9, '0') + '-' + Math.random().toString(36).slice(2, 6);
+// Strictly increasing within one server instance, so back-to-back saves keep their order.
+let lastTime = 0;
+function stamp() {
+  lastTime = Math.max(Date.now(), lastTime + 1);
+  return lastTime.toString(36).padStart(9, '0') + '-' + Math.random().toString(36).slice(2, 6);
+}
 const stampTime = (st) => new Date(parseInt(st.split('-')[0], 36)).toISOString();
 
 export function createLog(kv, root) {
