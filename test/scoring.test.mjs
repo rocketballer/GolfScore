@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { teamHandicap, strokesOnHole, teamRound, leaderboard, recap, fmtToPar, gameStandings } from '../public/scoring.js';
+import { TOURNAMENT, defaultConfig } from '../netlify/functions/lib/seed.mjs';
+
+const holes = TOURNAMENT.course.holes;
+const state = (scores = {}) => ({ tournament: TOURNAMENT, ...defaultConfig(), scores, games: {}, chat: [] });
+const card = (arr) => ({ holes: Object.fromEntries(arr.map((v, i) => [i + 1, v]).filter(([, v]) => v != null)), putts: {} });
+
+test('seed matches the Squabbit event', () => {
+  const c = defaultConfig();
+  assert.equal(c.teams.length, 9);
+  assert.equal(c.teams.flatMap((t) => t.players).length, 36);
+  assert.equal(holes.reduce((s, h) => s + h.par, 0), 71);
+  assert.deepEqual([...holes.map((h) => h.si)].sort((a, b) => a - b), Array.from({ length: 18 }, (_, i) => i + 1));
+  assert.equal(holes[5].par, 3); // CTP hole
+  assert.equal(holes[9].par, 5); // long drive hole
+});
+
+test('handicap strokes by stroke index', () => {
+  assert.equal(strokesOnHole(0, 1), 0);
+  assert.equal(strokesOnHole(5, 5), 1);
+  assert.equal(strokesOnHole(5, 6), 0);
+  assert.equal(strokesOnHole(20, 2), 2);
+  assert.equal(strokesOnHole(20, 3), 1);
+  assert.equal(strokesOnHole(-2, 18), -1);
+  assert.equal(strokesOnHole(-2, 16), 0);
+});
+
+test('team handicap methods', () => {
+  const team = { hcpOverride: null, players: [{ hcp: 20 }, { hcp: 4 }, { hcp: 12 }, { hcp: 8 }] };
+  assert.equal(teamHandicap(team, { teamHcpMethod: 'scramble4' }), Math.round(4 * 0.25 + 8 * 0.2 + 12 * 0.15 + 20 * 0.1));
+  assert.equal(teamHandicap(team, { teamHcpMethod: 'pct', teamHcpPct: 10 }), 4);
+  assert.equal(teamHandicap(team, { teamHcpMethod: 'none' }), null);
+  assert.equal(teamHandicap({ ...team, hcpOverride: 3.4 }, { teamHcpMethod: 'none' }), 3);
+  assert.equal(teamHandicap({ hcpOverride: null, players: [{ hcp: null }] }, { teamHcpMethod: 'scramble4' }), null);
+});
+
+test('round totals and leaderboard ordering with ties', () => {
+  const pars = holes.map((h) => h.par);
+  const s = state({
+    t1: card(pars.map((p) => p - 1 + 1)), // even par, complete
+    t2: card(pars.map((p, i) => (i < 9 ? p - 1 : null))), // -9 thru 9
+    t3: card(pars.map((p) => p)), // even, complete
+  });
+  const lb = leaderboard(s, false);
+  assert.equal(lb[0].team.id, 't2');
+  assert.equal(lb[0].pos, '1');
+  assert.equal(lb[0].toPar, -9);
+  assert.equal(lb[0].thru, 9);
+  assert.equal(lb[1].pos, 'T2');
+  assert.equal(lb[2].pos, 'T2');
+  assert.equal(lb[3].pos, '-');
+  const r = teamRound(s.teams[0], s.scores.t1, holes, s.settings);
+  assert.equal(r.gross, 71);
+  assert.equal(r.complete, true);
+  assert.equal(fmtToPar(0), 'E');
+  assert.equal(fmtToPar(-3), '-3');
+  assert.equal(fmtToPar(2), '+2');
+});
+
+test('recap stats', () => {
+  const pars = holes.map((h) => h.par);
+  const a = pars.slice(); a[2] = pars[2] + 3; a[7] = pars[7] - 2; a[0] = pars[0] - 1; a[1] = pars[1] - 1;
+  const s = state({ t1: card(a), t2: card(pars) });
+  const rc = recap(s);
+  assert.equal(rc.completeRounds, 2);
+  assert.equal(rc.blowup[0].hole, 3);
+  assert.equal(rc.blowup[0].value, 3);
+  assert.equal(rc.lowest[0].hole, 8);
+  assert.equal(rc.eagles[0].team.id, 't1');
+  assert.equal(rc.birdies[0].value, 2);
+  assert.equal(rc.doubles[0].value, 1);
+  assert.equal(rc.parStreak.find((x) => x.team.id === 't2').value, 18);
+  assert.equal(rc.bestGross[0].team.id, 't1');
+});
+
+test('game standings', () => {
+  assert.deepEqual(gameStandings({ type: 'ctp' }, [{ value: 40 }, { value: 12 }]).map((e) => e.value), [12, 40]);
+  assert.deepEqual(gameStandings({ type: 'ld' }, [{ value: 240 }, { value: 290 }]).map((e) => e.value), [290, 240]);
+});

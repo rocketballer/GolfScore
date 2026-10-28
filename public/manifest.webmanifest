@@ -1,0 +1,9 @@
+{
+  "name": "Fighter Invitational",
+  "short_name": "Fighter Inv.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1E7A4A",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
