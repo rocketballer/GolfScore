@@ -15,7 +15,9 @@ export function blobsKV(store) {
     },
     async write(key, value) { await store.setJSON(key, value); },
     async writeIf(key, value, tag) {
-      const r = await store.setJSON(key, value, tag ? { onlyIfMatch: tag } : { onlyIfNew: true });
+      // Use set(), not setJSON(): in @netlify/blobs 10.3.0 setJSON() drops the
+      // onlyIfMatch/onlyIfNew condition and always overwrites.
+      const r = await store.set(key, JSON.stringify(value), tag ? { onlyIfMatch: tag } : { onlyIfNew: true });
       return r.modified;
     },
   };
