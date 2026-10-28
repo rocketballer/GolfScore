@@ -20,24 +20,24 @@ test('state, scoring, games, chat', async () => {
   let r = await call(ctx, 'state');
   assert.equal(r.status, 200);
   assert.equal(r.body.teams.length, 9);
-  r = await call(ctx, 'score', { teamId: 't3', hole: 7, strokes: 3, putts: 1, by: 'Slater' });
+  r = await call(ctx, 'score', { teamId: 't3', hole: 7, strokes: 3, putts: 1, me: 'p3-1' });
   assert.equal(r.status, 200);
-  await call(ctx, 'score', { teamId: 't3', hole: 8, strokes: 5 });
+  await call(ctx, 'score', { teamId: 't3', hole: 8, strokes: 5, me: 'p3-2' });
   r = await call(ctx, 'state');
   assert.deepEqual(r.body.scores.t3.holes, { 7: 3, 8: 5 });
   assert.equal(r.body.scores.t3.putts[7], 1);
-  assert.equal(r.body.scores.t3.updatedBy, '');
-  await call(ctx, 'score', { teamId: 't3', hole: 7, strokes: null });
+  assert.equal(r.body.scores.t3.updatedBy, 'Boland', 'name comes from the server, not the request');
+  await call(ctx, 'score', { teamId: 't3', hole: 7, strokes: null, me: 'p3-1' });
   assert.deepEqual((await call(ctx, 'state')).body.scores.t3.holes, { 8: 5 });
-  assert.equal((await call(ctx, 'score', { teamId: 't3', hole: 19, strokes: 4 })).status, 400);
+  assert.equal((await call(ctx, 'score', { teamId: 't3', hole: 19, strokes: 4, me: 'p3-1' })).status, 400);
   assert.equal((await call(ctx, 'score', { teamId: 'nope', hole: 1, strokes: 4 })).status, 400);
-  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 0 })).status, 400);
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 0, me: 'p1-1' })).status, 400);
 
-  r = await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p3-1', value: 74 });
+  r = await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p3-1', value: 74, me: 'p3-1' });
   assert.equal(r.status, 200);
-  r = await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p3-1', value: 50 });
+  r = await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p3-1', value: 50, me: 'p3-1' });
   assert.deepEqual(r.body.games.ctp6.map((e) => e.value), [50]);
-  assert.equal((await call(ctx, 'game', { gameId: 'ld10', playerId: 'p3-1', value: 501 })).status, 400);
+  assert.equal((await call(ctx, 'game', { gameId: 'ld10', playerId: 'p3-1', value: 501, me: 'p3-1' })).status, 400);
   r = await call(ctx, 'chat', { name: 'Slater', text: 'Good luck boys' });
   assert.equal(r.body.chat.length, 1);
   assert.equal((await call(ctx, 'chat', { name: '', text: 'x' })).status, 400);
@@ -46,7 +46,7 @@ test('state, scoring, games, chat', async () => {
 
 test('simultaneous saves on one team keep every hole', async () => {
   const ctx = setup();
-  const results = await Promise.all(Array.from({ length: 18 }, (_, i) => call(ctx, 'score', { teamId: 't2', hole: i + 1, strokes: 4 })));
+  const results = await Promise.all(Array.from({ length: 18 }, (_, i) => call(ctx, 'score', { teamId: 't2', hole: i + 1, strokes: 4, me: 'p2-1' })));
   assert.ok(results.every((r) => r.status === 200), JSON.stringify(results.map((r) => r.status)));
   const holes = (await call(ctx, 'state')).body.scores.t2.holes;
   assert.equal(Object.keys(holes).length, 18);
@@ -82,7 +82,7 @@ test('organizer edits, locked scoring, clearing and resetting', async () => {
   assert.equal(st2.teams[0].players[0].hcp, 12.4);
   assert.equal(st2.settings.tee, 'Championship');
   assert.equal(st2.teeTimes.length, 1);
-  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 })).status, 423);
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-1' })).status, 423);
   assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 }, PIN)).status, 200);
   assert.equal((await call(ctx, 'admin/config', { settings: { tee: 'Bogus' } }, PIN)).status, 400);
   await call(ctx, 'admin/clear-scores', {}, PIN);
@@ -97,5 +97,63 @@ test('wrong PINs lock out that address after 5 tries', async () => {
   assert.equal((await call(ctx, 'admin/verify', {}, PIN)).status, 429, 'locked even with the right PIN');
   assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 }, '0000')).status, 429, 'every route checks a sent PIN');
   assert.equal((await call({ ...ctx, clientIp: '5.6.7.8' }, 'admin/verify', {}, PIN)).status, 200, 'other addresses unaffected');
-  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 })).status, 200, 'public use without a PIN still works');
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-1' })).status, 200, 'public use without a PIN still works');
+});
+
+test('only a team\'s own players (or the organizer) can score for it', async () => {
+  const ctx = setup();
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 })).status, 403, 'no name picked');
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p3-1' })).status, 403, 'player from another team');
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'nobody' })).status, 403, 'unknown player');
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-2' })).status, 200);
+  const r = await call(ctx, 'score', { teamId: 't1', hole: 2, strokes: 4 }, PIN);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.card.updatedBy, 'Organizer');
+});
+
+test('distances: your own only, and closed scoring blocks them', async () => {
+  const ctx = setup();
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40, me: 'p1-2' })).status, 403);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40 })).status, 403);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40, me: 'p1-1' })).status, 200);
+  await call(ctx, 'admin/config', { settings: { locked: true } }, PIN);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 30, me: 'p1-1' })).status, 423);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 30 }, PIN)).status, 200, 'organizer can still edit');
+});
+
+test('restoring the original teams keeps tee times, settings and scores', async () => {
+  const ctx = setup();
+  await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-1' });
+  const st = (await call(ctx, 'state')).body;
+  st.teams[0].name = 'Renamed';
+  st.teams.push({ id: 'tnew', name: 'Extra', players: [{ id: 'pnew', name: 'Guest' }] });
+  await call(ctx, 'admin/config', {
+    teams: st.teams,
+    teeTimes: [{ time: '11:50', startHole: 3, teamIds: ['t1', 'tnew'] }],
+    settings: { tee: 'Championship', announcement: 'Be early' },
+  }, PIN);
+  assert.equal((await call(ctx, 'admin/reset-config', {}, PIN)).status, 200);
+  const after = (await call(ctx, 'state')).body;
+  assert.equal(after.teams.length, 9);
+  assert.equal(after.teams[0].name, 'Team 1');
+  assert.equal(after.settings.tee, 'Championship');
+  assert.equal(after.settings.announcement, 'Be early');
+  assert.deepEqual(after.teeTimes.map((g) => [g.time, g.startHole, g.teamIds]), [['11:50', 3, ['t1']]], 'removed team dropped from tee time');
+  assert.deepEqual(after.scores.t1.holes, { 1: 4 });
+});
+
+test('removing a team or player deletes their scores and distances', async () => {
+  const ctx = setup();
+  await call(ctx, 'score', { teamId: 't9', hole: 1, strokes: 4, me: 'p9-1' });
+  await call(ctx, 'game', { gameId: 'ld10', playerId: 'p2-1', value: 280, me: 'p2-1' });
+  await call(ctx, 'game', { gameId: 'ld10', playerId: 'p2-2', value: 260, me: 'p2-2' });
+  const st = (await call(ctx, 'state')).body;
+  const teams = st.teams.filter((t) => t.id !== 't9');
+  teams[1].players = teams[1].players.filter((p) => p.id !== 'p2-1');
+  await call(ctx, 'admin/config', { teams }, PIN);
+  // Re-adding a team with the same id must start from a clean card.
+  await call(ctx, 'admin/config', { teams: [...teams, { id: 't9', name: 'Team 9', players: [{ id: 'p9-1', name: 'Jack' }] }] }, PIN);
+  const after = (await call(ctx, 'state')).body;
+  assert.deepEqual(after.scores.t9.holes, {});
+  assert.deepEqual(after.games.ld10.map((e) => e.playerId), ['p2-2']);
 });

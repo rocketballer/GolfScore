@@ -74,6 +74,7 @@ function render() {
       ${draft.teams.map(teamEditor)}
       <button class="btn" data-action="admin-add-team">+ Add team</button>
       <p class="small muted flush">Team hcp overrides the calculated team handicap. Leave blank to calculate it from player handicaps.</p>
+      <p class="small muted flush">Saving deletes the scores of removed teams and the hole-competition distances of removed players.</p>
     </div></div>
 
     <div class="card"><div class="card-head">Tee times</div><div class="card-body stack">
@@ -88,6 +89,7 @@ function render() {
         <button class="btn btn-danger" data-action="admin-clear-scores">Clear scores…</button></div>
       <button class="btn btn-danger" data-action="admin-clear-games">Clear hole competition results…</button>
       <button class="btn btn-danger" data-action="admin-reset">Restore original teams from Squabbit…</button>
+      <p class="small muted flush">Puts back the original 9 teams and 36 players. Tee times, settings and the original teams' scores stay.</p>
     </div></div>`;
 }
 

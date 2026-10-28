@@ -75,8 +75,22 @@ export function createRepo(kv) {
 
   return {
     getConfig,
-    saveConfig: (config) => kv.write(keys.config, config),
-    resetConfig: () => kv.write(keys.config, defaultConfig()),
+    /**
+     * Saves the organizer's config. Scores of teams that no longer exist and
+     * distances of players who no longer exist are deleted with it.
+     */
+    async saveConfig(next) {
+      const before = await getConfig();
+      const teamIds = new Set(next.teams.map((t) => t.id));
+      const playerIds = new Set(next.teams.flatMap((t) => t.players.map((p) => p.id)));
+      const goneTeams = before.teams.filter((t) => !teamIds.has(t.id)).map((t) => t.id);
+      const gonePlayers = before.teams.flatMap((t) => t.players).filter((p) => !playerIds.has(p.id)).map((p) => p.id);
+      await kv.write(keys.config, next);
+      await Promise.all([
+        ...goneTeams.map((id) => scores.clear(id)),
+        ...TOURNAMENT.games.flatMap((g) => gonePlayers.map((id) => distances.clear(g.id, id))),
+      ]);
+    },
 
     /** Everything a screen needs, in one object. */
     async getState() {

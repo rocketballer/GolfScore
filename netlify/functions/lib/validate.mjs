@@ -77,5 +77,9 @@ export function applyConfigEdits(input, current) {
     if (s.locked !== undefined) out.settings.locked = !!s.locked;
     if (s.announcement !== undefined) out.settings.announcement = String(s.announcement).slice(0, 300);
   }
+
+  // Tee times only list teams that still exist.
+  const teamIds = new Set(out.teams.map((t) => t.id));
+  out.teeTimes = out.teeTimes.map((g) => ({ ...g, teamIds: g.teamIds.filter((id) => teamIds.has(id)) }));
   return out;
 }

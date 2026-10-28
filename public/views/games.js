@@ -2,12 +2,13 @@
 import { html } from '../lib/html.js';
 import { avatar, toast } from '../lib/util.js';
 import { gameLabel, gameStandings, gameType, gameValueFromFields } from '../shared/rules.js';
-import { allPlayers, api, app, findPlayer, holes, isOrganizer, myPlayer, patchData, settings, tournament } from '../state.js';
+import { allPlayers, api, app, findPlayer, holes, isOrganizer, myPlayer, patchData, scoringOpen, settings, tournament } from '../state.js';
 import { standingRow } from './common.js';
 
 function entryForm(game) {
   const type = gameType(game);
   const me = myPlayer();
+  if (!scoringOpen()) return html`<p class="small muted text-center">Scoring is closed.</p>`;
   if (!me && !isOrganizer()) {
     return html`<button class="btn btn-outline self-center" data-action="who">Pick your name to enter a distance</button>`;
   }
@@ -43,7 +44,7 @@ function gameCard(game) {
 
 async function saveEntry(gameId, playerId, value, done) {
   try {
-    const out = await api('game', { gameId, playerId, value });
+    const out = await api('game', { gameId, playerId, value, me: myPlayer()?.id });
     patchData({ games: out.games });
     toast(done);
   } catch (e) { toast(e.message); }

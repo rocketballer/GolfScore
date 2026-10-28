@@ -3,7 +3,7 @@ import { html } from '../lib/html.js';
 import { toast } from '../lib/util.js';
 import { fmtToPar } from '../scoring.js';
 import { SCORE_LIMITS, emptyCard, gameLabel } from '../shared/rules.js';
-import { app, api, canScore, findTeam, holes, isOrganizer, myPlayer, refresh, rerender, scoringOpen, settings, tournament } from '../state.js';
+import { app, api, canScore, findTeam, holes, myPlayer, refresh, rerender, scoringOpen, settings, tournament } from '../state.js';
 import { closeSheet, openSheet, startScoring } from './sheets.js';
 
 const SCORE_NAMES = { '-3': 'Albatross', '-2': 'Eagle', '-1': 'Birdie', 0: 'Par', 1: 'Bogey', 2: 'Double bogey', 3: 'Triple bogey' };
@@ -64,8 +64,7 @@ async function save(clear) {
   app.data = { ...app.data, scores: { ...app.data.scores, [teamId]: card } };
   rerender();
   try {
-    const by = myPlayer()?.name || (isOrganizer() ? 'Organizer' : '');
-    const out = await api('score', { teamId, hole, strokes: clear ? null : strokes, putts: clear ? null : putts, by });
+    const out = await api('score', { teamId, hole, strokes: clear ? null : strokes, putts: clear ? null : putts, me: myPlayer()?.id });
     app.data = { ...app.data, scores: { ...app.data.scores, [teamId]: out.card } };
     return true;
   } catch (e) {

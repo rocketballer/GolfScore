@@ -49,9 +49,10 @@ export function createLog(kv, root) {
       return out;
     },
 
-    /** Deletes every entry in a group (or everything when no group is given). */
-    async clear(group) {
-      const keys = await kv.list(group ? `${root}/${group}/` : `${root}/`);
+    /** Deletes every entry in a group, one item of a group, or everything when no group is given. */
+    async clear(group, item) {
+      const prefix = item !== undefined ? `${root}/${group}/${item}/` : group ? `${root}/${group}/` : `${root}/`;
+      const keys = await kv.list(prefix);
       await Promise.all(keys.map((k) => kv.remove(k)));
     },
   };
