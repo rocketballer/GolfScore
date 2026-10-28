@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { teamHandicap, strokesOnHole, teamRound, leaderboard, recap, fmtToPar, gameStandings } from '../public/scoring.js';
+import { teamHandicap, strokesOnHole, teamRound, leaderboard, recap, fmtToPar } from '../public/scoring.js';
+import { gameStandings, gameValueFromFields, gameLabel, GAME_TYPES } from '../public/shared/rules.js';
 import { TOURNAMENT, defaultConfig } from '../netlify/functions/lib/seed.mjs';
 
 const holes = TOURNAMENT.course.holes;
@@ -64,7 +65,7 @@ test('recap stats', () => {
   const a = pars.slice(); a[2] = pars[2] + 3; a[7] = pars[7] - 2; a[0] = pars[0] - 1; a[1] = pars[1] - 1;
   const s = state({ t1: card(a), t2: card(pars) });
   const rc = recap(s);
-  assert.equal(rc.completeRounds, 2);
+  assert.equal(rc.bestGross.length, 2);
   assert.equal(rc.blowup[0].hole, 3);
   assert.equal(rc.blowup[0].value, 3);
   assert.equal(rc.lowest[0].hole, 8);
@@ -75,7 +76,14 @@ test('recap stats', () => {
   assert.equal(rc.bestGross[0].team.id, 't1');
 });
 
-test('game standings', () => {
-  assert.deepEqual(gameStandings({ type: 'ctp' }, [{ value: 40 }, { value: 12 }]).map((e) => e.value), [12, 40]);
-  assert.deepEqual(gameStandings({ type: 'ld' }, [{ value: 240 }, { value: 290 }]).map((e) => e.value), [290, 240]);
+test('game rules', () => {
+  const ctp = { type: 'ctp', hole: 6 }, ld = { type: 'ld', hole: 10 };
+  assert.deepEqual(gameStandings(ctp, [{ value: 40 }, { value: 12 }]).map((e) => e.value), [12, 40]);
+  assert.deepEqual(gameStandings(ld, [{ value: 240 }, { value: 290 }]).map((e) => e.value), [290, 240]);
+  assert.equal(gameValueFromFields(ctp, { ft: '7', in: '3' }), 87);
+  assert.equal(gameValueFromFields(ctp, { ft: '', in: '' }), null);
+  assert.equal(gameValueFromFields(ld, { yd: '285' }), 285);
+  assert.equal(GAME_TYPES.ctp.format(87), `7' 3"`);
+  assert.equal(gameLabel(ctp), 'Hole 6: Closest to the pin');
+  for (const g of TOURNAMENT.games) assert.ok(GAME_TYPES[g.type], g.id);
 });

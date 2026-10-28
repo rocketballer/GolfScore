@@ -31,7 +31,7 @@ const TEES = [
 ];
 
 export const TOURNAMENT = {
-  id: 'fighter-invitational',
+  id: 'fighter-invitational', // also the name of the data store
   name: 'Fighter Invitational',
   format: 'Scramble',
   date: '2026-10-31',
@@ -49,9 +49,10 @@ export const TOURNAMENT = {
       yards: Object.fromEntries(TEES.map((t, i) => [t.id, y[i]])),
     })),
   },
+  // Hole competitions. `type` is a key of GAME_TYPES in public/shared/rules.js.
   games: [
-    { id: 'ctp6', type: 'ctp', hole: 6, label: 'Hole 6: Closest to the pin' },
-    { id: 'ld10', type: 'ld', hole: 10, label: 'Hole 10: Longest drive' },
+    { id: 'ctp6', type: 'ctp', hole: 6 },
+    { id: 'ld10', type: 'ld', hole: 10 },
   ],
 };
 

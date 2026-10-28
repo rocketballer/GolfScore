@@ -16,9 +16,10 @@ export function teamHandicap(team, settings) {
 export function strokesOnHole(hcp, si) {
   if (!hcp) return 0;
   if (hcp > 0) return Math.floor(hcp / 18) + (si <= hcp % 18 ? 1 : 0);
-  // plus handicap gives strokes back, starting from the easiest holes
+  // A plus handicap gives strokes back, starting from the easiest holes.
   const plus = -hcp;
-  return 0 - (Math.floor(plus / 18) + (si > 18 - (plus % 18) ? 1 : 0)) || 0;
+  const given = Math.floor(plus / 18) + (si > 18 - (plus % 18) ? 1 : 0);
+  return given ? -given : 0;
 }
 
 /** Everything the screens need about one team's round. */
@@ -37,10 +38,9 @@ export function teamRound(team, card, holes, settings) {
   const played = rows.filter((r) => r.gross !== null);
   const sum = (arr, f) => arr.reduce((s, r) => s + f(r), 0);
   const front = played.filter((r) => r.n <= 9), back = played.filter((r) => r.n >= 10);
-  // "Thru" counts holes in play order for shotgun starts; for display we use the count.
   return {
     team, hcp, rows,
-    thru: played.length,
+    thru: played.length, // holes played, in any order
     complete: played.length === holes.length,
     gross: sum(played, (r) => r.gross),
     toPar: sum(played, (r) => r.toPar),
@@ -116,8 +116,6 @@ export function recap(state) {
 
   const complete = rounds.filter((r) => r.complete);
   return {
-    teamsWithScores: rounds.length,
-    completeRounds: complete.length,
     blowup: holeExtremes(true).filter((x) => x.value > 0),
     lowest: holeExtremes(false).filter((x) => x.value < 0),
     bestGross: complete.map((r) => ({ team: r.team, value: r.gross, toPar: r.toPar })).sort(asc),
@@ -149,11 +147,4 @@ export function recap(state) {
       return { team: r.team, points: r.rows.map((x) => (x.gross === null ? null : (run += x.toPar))) };
     }),
   };
-}
-
-/** Game standings: CTP lowest wins, longest drive highest wins. */
-export function gameStandings(game, entries) {
-  const list = [...(entries || [])];
-  list.sort((a, b) => (game.type === 'ctp' ? a.value - b.value : b.value - a.value));
-  return list;
 }
