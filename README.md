@@ -15,9 +15,10 @@ It is a phone-first web app with the same sections as Squabbit:
 | Activity (group chat) | Same |
 | "Playing or spectating?" prompt | Same; players pick their name and score for their own team |
 
-The organizer page (`#admin`, linked at the bottom of Home) is protected by a PIN and lets you
+The **Admin setup** page (`/admin`, also linked at the bottom of Home) is protected by a PIN and lets you
 edit teams, players and handicaps, set tee times, pick the tees, set the team handicap rule, close
-scoring, post an announcement, and clear scores.
+scoring and post an announcement. Its Reset section clears scores (all or one team), hole-competition
+distances or the chat, or restores the original Squabbit teams.
 
 ## Teams (from Squabbit)
 

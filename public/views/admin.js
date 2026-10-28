@@ -1,4 +1,5 @@
-// Organizer tools. Edits go into a local draft and are sent together on "Save changes".
+// Admin setup (#admin, also reachable at /admin). Edits go into a local draft and are sent
+// together on "Save changes"; the Reset buttons act immediately.
 import { html } from '../lib/html.js';
 import { $, confirmTap, setPath, toast } from '../lib/util.js';
 import { HCP_METHODS } from '../shared/rules.js';
@@ -20,8 +21,8 @@ const numField = (path, value, placeholder, label) =>
   html`<input class="input" type="number" step="0.1" data-action="admin-set" data-type="number" data-path="${path}" value="${value ?? ''}" placeholder="${placeholder}" aria-label="${label}">`;
 
 function lockedView() {
-  return html`<div class="card card-plain stack"><h2 class="flush">Organizer tools</h2>
-    <p class="muted flush">Enter the organizer PIN to manage teams, handicaps, tee times and scoring.</p>
+  return html`<div class="card card-plain stack"><h2 class="flush">Admin setup</h2>
+    <p class="muted flush">Enter the organizer PIN to manage teams, players, tee times and scoring, or to reset scores and chat.</p>
     <form class="row" data-action="admin-unlock"><input class="input grow" name="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Organizer PIN" aria-label="Organizer PIN"><button class="btn btn-primary">Unlock</button></form></div>`;
 }
 
@@ -56,7 +57,8 @@ function render() {
   draft ||= structuredClone({ teams: app.data.teams, teeTimes: app.data.teeTimes, settings: app.data.settings });
   const s = draft.settings;
   return html`
-    <div class="row spread"><h2 class="flush">Organizer tools</h2><button class="link-btn" data-action="admin-sign-out">Sign out</button></div>
+    <div class="row spread"><h2 class="flush">Admin setup</h2><button class="link-btn" data-action="admin-sign-out">Sign out</button></div>
+    <p class="small muted flush">Changes to settings, teams and tee times apply when you tap <b>Save changes</b>. The Reset buttons at the bottom act right away.</p>
     <div class="card"><div class="card-head">Event settings</div><div class="card-body stack">
       <div class="field"><label for="a-tee">Tees</label><select class="input" id="a-tee" data-action="admin-set" data-path="settings.tee">
         ${tournament().course.tees.map((t) => html`<option ${t.id === s.tee && 'selected'}>${t.id}</option>`)}</select></div>
@@ -84,13 +86,26 @@ function render() {
 
     <div class="row save-bar"><button class="btn btn-primary btn-block" data-action="admin-save">Save changes</button></div>
 
-    <div class="card"><div class="card-head">Danger zone</div><div class="card-body stack">
-      <div class="row"><select class="input grow" id="clear-team" aria-label="Team to clear"><option value="">All teams</option>${app.data.teams.map((t) => html`<option value="${t.id}">${t.name}</option>`)}</select>
-        <button class="btn btn-danger" data-action="admin-clear-scores">Clear scores…</button></div>
-      <button class="btn btn-danger" data-action="admin-clear-games">Clear hole competition results…</button>
-      <button class="btn btn-danger" data-action="admin-reset">Restore original teams from Squabbit…</button>
-      <p class="small muted flush">Puts back the original 9 teams and 36 players. Tee times, settings and the original teams' scores stay.</p>
-    </div></div>`;
+    ${resetCard()}`;
+}
+
+/** Reset buttons, each saying how much it will remove. They act immediately (after a second tap). */
+function resetCard() {
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const holes = Object.values(app.data.scores).reduce((n, c) => n + Object.keys(c.holes).length, 0);
+  const distances = Object.values(app.data.games).reduce((n, list) => n + list.length, 0);
+  const messages = app.data.chat.length;
+  const item = (label, detail, button) => html`<div class="reset-item"><div class="grow"><b>${label}</b><div class="small muted">${detail}</div></div>${button}</div>`;
+  return html`<div class="card"><div class="card-head">Reset</div><div class="card-body stack">
+    ${item('Scores', `${plural(holes, 'hole')} entered`, html`<div class="row">
+      <select class="input" id="clear-team" aria-label="Team to clear"><option value="">All teams</option>${app.data.teams.map((t) => html`<option value="${t.id}">${t.name}</option>`)}</select>
+      <button class="btn btn-danger" data-action="admin-clear-scores">Clear…</button></div>`)}
+    ${item('Hole competitions', `${plural(distances, 'distance')} entered`, html`<button class="btn btn-danger" data-action="admin-clear-games">Clear…</button>`)}
+    ${item('Chat', `${plural(messages, 'message')}`, html`<button class="btn btn-danger" data-action="admin-clear-chat">Clear…</button>`)}
+    ${item('Teams & players', 'Puts back the original 9 teams and 36 players from Squabbit. Tee times, settings and the original teams\' scores stay.',
+      html`<button class="btn btn-danger" data-action="admin-reset">Restore…</button>`)}
+    <p class="small muted flush">Each button asks you to tap again to confirm. Clearing can't be undone.</p>
+  </div></div>`;
 }
 
 /** Changes the draft, then redraws the form from it. */
@@ -108,7 +123,7 @@ export default {
   actions: {
     'admin-unlock': async (_, form) => {
       setOrganizerPin(form.elements.pin.value.trim());
-      try { await api('admin/verify', {}); toast('Organizer tools unlocked'); rerender(); }
+      try { await api('admin/verify', {}); toast('Admin setup unlocked'); rerender(); }
       catch (e) { setOrganizerPin(null); toast(e.message); }
     },
     'admin-sign-out': () => { setOrganizerPin(null); draft = null; rerender(); },
@@ -150,6 +165,9 @@ export default {
     },
     'admin-clear-scores': (_, el) => confirmTap(el, async () => {
       if (await run('admin/clear-scores', { teamId: $('#clear-team').value || undefined }, 'Scores cleared')) refresh();
+    }),
+    'admin-clear-chat': (_, el) => confirmTap(el, async () => {
+      if (await run('admin/clear-chat', {}, 'Chat cleared')) refresh();
     }),
     'admin-clear-games': (_, el) => confirmTap(el, async () => {
       if (await run('admin/clear-games', {}, 'Hole competitions cleared')) refresh();

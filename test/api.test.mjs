@@ -157,3 +157,11 @@ test('removing a team or player deletes their scores and distances', async () =>
   assert.deepEqual(after.scores.t9.holes, {});
   assert.deepEqual(after.games.ld10.map((e) => e.playerId), ['p2-2']);
 });
+
+test('organizer can clear the chat', async () => {
+  const ctx = setup();
+  await call(ctx, 'chat', { name: 'A', text: 'hello' });
+  assert.equal((await call(ctx, 'admin/clear-chat', {})).status, 401);
+  assert.equal((await call(ctx, 'admin/clear-chat', {}, PIN)).status, 200);
+  assert.deepEqual((await call(ctx, 'state')).body.chat, []);
+});

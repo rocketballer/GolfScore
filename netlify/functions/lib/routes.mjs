@@ -106,6 +106,11 @@ export const routes = {
     async run({ repo }) { await repo.clearDistances(); return { ok: true }; },
   },
 
+  'POST admin/clear-chat': {
+    access: 'organizer',
+    async run({ repo }) { await repo.clearChat(); return { ok: true }; },
+  },
+
   'POST admin/chat-delete': {
     access: 'organizer',
     async run({ body, repo }) {

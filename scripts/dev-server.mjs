@@ -22,6 +22,7 @@ http.createServer(async (req, res) => {
     res.writeHead(r.status, Object.fromEntries(r.headers));
     return res.end(await r.text());
   }
+  if (url.pathname === '/admin') { res.writeHead(302, { location: '/#admin' }); return res.end(); } // mirrors netlify.toml
   let p = normalize(join(root, url.pathname));
   if (!p.startsWith(root)) { res.writeHead(403); return res.end(); }
   if (url.pathname.endsWith('/')) p = join(p, 'index.html');

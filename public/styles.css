@@ -335,3 +335,5 @@ table.grid { border-collapse: separate; border-spacing: 0; width: max-content; m
 .admin-team .input[data-path$="hcpOverride"] { width: 110px; flex: none; }
 select.push-right { width: auto; }
 .save-bar { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+.reset-item { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.reset-item .row { flex-wrap: nowrap; }

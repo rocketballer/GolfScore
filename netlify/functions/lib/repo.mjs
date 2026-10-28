@@ -117,6 +117,7 @@ export function createRepo(kv) {
 
     /** Applies `change` to the message list and keeps only the newest messages. */
     updateChat: (change) => update(keys.chat, () => [], (chat) => change(chat).slice(-MAX_CHAT)),
+    clearChat: () => kv.write(keys.chat, []),
 
     // Wrong-PIN tracking, per client address.
     getFailures: (ip) => get(keys.failures(ip), () => ({ count: 0, since: 0 })),

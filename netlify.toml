@@ -5,6 +5,12 @@
 [functions]
   node_bundler = "esbuild"
 
+# Short address for the admin page: /admin opens the in-app #admin screen.
+[[redirects]]
+  from = "/admin"
+  to = "/#admin"
+  status = 302
+
 [[headers]]
   for = "/*"
   [headers.values]
