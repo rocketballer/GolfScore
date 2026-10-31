@@ -135,7 +135,7 @@ function resetCard() {
       <button class="btn btn-danger" data-action="admin-clear-scores">Clear…</button></div>`)}
     ${item('Hole competitions', `${plural(distances, 'distance')} entered`, html`<button class="btn btn-danger" data-action="admin-clear-games">Clear…</button>`)}
     ${item('Chat', `${plural(messages, 'message')}`, html`<button class="btn btn-danger" data-action="admin-clear-chat">Clear…</button>`)}
-    ${item('Teams & players', 'Puts back the original 9 teams and 36 players from Squabbit. Tee times, settings and the original teams\' scores stay.',
+    ${item('Teams & players', 'Puts back the official lineup (9 teams, 36 players). Tee times, settings and those teams\' scores stay.',
       html`<button class="btn btn-danger" data-action="admin-reset">Restore…</button>`)}
     <p class="small muted flush">Each button asks you to tap again to confirm. Clearing can't be undone.</p>
   </div></div>`;

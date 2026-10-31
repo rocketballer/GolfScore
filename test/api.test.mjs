@@ -105,7 +105,7 @@ test('only a team\'s own players (or the organizer) can score for it', async () 
   assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4 })).status, 403, 'no name picked');
   assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p3-1' })).status, 403, 'player from another team');
   assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'nobody' })).status, 403, 'unknown player');
-  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-2' })).status, 200);
+  assert.equal((await call(ctx, 'score', { teamId: 't1', hole: 1, strokes: 4, me: 'p1-4' })).status, 200);
   const r = await call(ctx, 'score', { teamId: 't1', hole: 2, strokes: 4 }, PIN);
   assert.equal(r.status, 200);
   assert.equal(r.body.card.updatedBy, 'Organizer');
@@ -113,7 +113,7 @@ test('only a team\'s own players (or the organizer) can score for it', async () 
 
 test('distances: your own only, and closed scoring blocks them', async () => {
   const ctx = setup();
-  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40, me: 'p1-2' })).status, 403);
+  assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40, me: 'p1-4' })).status, 403);
   assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40 })).status, 403);
   assert.equal((await call(ctx, 'game', { gameId: 'ctp6', playerId: 'p1-1', value: 40, me: 'p1-1' })).status, 200);
   await call(ctx, 'admin/config', { settings: { locked: true } }, PIN);

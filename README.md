@@ -18,21 +18,23 @@ It is a phone-first web app with the same sections as Squabbit:
 The **Admin setup** page (`/admin`, also linked at the bottom of Home) is protected by a PIN and lets you
 edit teams, players and handicaps, set tee times, pick the tees, set the team handicap rule, close
 scoring and post an announcement. Its Reset section clears scores (all or one team), hole-competition
-distances or the chat, or restores the original Squabbit teams.
+distances or the chat, or restores the official lineup above.
 
-## Teams (from Squabbit)
+## Teams and tee times (official lineup, all starting on hole 1)
 
-1. Monik, Rick, Benny, Meth
-2. Degroot, Frauts, Pres, Dove
-3. Slater, Boland, Damo, Massey
-4. Nomack, Nate, Braeden, Raceer
-5. LD, JAKOB, El, Bully
-6. Pio, Vinnie, Nick B, Reid
-7. Sheridan, Richard, Nelson, Newdad
-8. Ondercin, Levi, Bombino, Basso
-9. Jack, Josh, Nabs, Nate Gurr
+| Tee time | Team | Players |
+|---|---|---|
+| 12:00 PM | Team 1 | Monik, Dove, Ben H, Meth |
+| 12:08 PM | Team 2 | Degroot, Frauts, Basso, Alonzo |
+| 12:16 PM | Team 3 | Slater, Boland, Damon, Wilson |
+| 12:24 PM | Team 4 | Nomack, Nate, Braeden, Raceer |
+| 12:32 PM | Team 5 | LD, JAKOB, Ethan, Bully |
+| 12:40 PM | Team 6 | Pio, Vinnie, Bradley, Reid |
+| 12:40 PM | Team 7 | Sheridan, Richard, Nelson, Weapon |
+| 12:48 PM | Team 8 | Ondercin, Pres, Bombino, Levi |
+| 12:56 PM | Team 9 | Jack, Josh, Nabs, Nate Gurr |
 
-Handicaps were "Not set" in Squabbit, so the board is gross until the organizer adds them.
+Handicaps start "Not set", so the board is gross until the organizer adds them.
 
 ## How it's organized
 
@@ -53,7 +55,7 @@ public/                        static site, no build step
   img/                         header photo
 netlify/functions/
   api.mjs                      Netlify entry point (wiring only)
-  lib/seed.mjs                 the event: course, date, games, original Squabbit teams
+  lib/seed.mjs                 the event: course, date, games, official lineup and tee times
   lib/core.mjs                 request handling: routing, organizer PIN check, lockout, errors
   lib/routes.mjs               every API action, each marked public or organizer
   lib/repo.mjs                 all storage, behind plain functions (getState, saveScore, ...)

@@ -125,7 +125,7 @@ export const routes = {
 
   'POST admin/reset-config': {
     access: 'organizer',
-    /** Puts back the original Squabbit teams and players. Tee times, settings and scores stay. */
+    /** Puts back the official lineup from seed.mjs. Tee times, settings and scores stay. */
     async run({ repo }) {
       const config = applyConfigEdits({ teams: defaultConfig().teams }, await repo.getConfig());
       await repo.saveConfig(config);

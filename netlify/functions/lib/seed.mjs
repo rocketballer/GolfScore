@@ -1,4 +1,5 @@
-// Fighter Invitational, copied from the Squabbit event (invite code CNHFQM).
+// Fighter Invitational. Originally copied from the Squabbit event (invite code CNHFQM);
+// the lineup below is the organizer's final one for Oct 31, 2026.
 // Course data: Victoria Park East Golf Club, Puslinch, ON (GolfPass scorecard).
 
 const HOLES = [
@@ -57,27 +58,30 @@ export const TOURNAMENT = {
   ],
 };
 
-const TEAM_PLAYERS = [
-  ['Monik', 'Rick', 'Benny', 'Meth'],
-  ['Degroot', 'Frauts', 'Pres', 'Dove'],
-  ['Slater', 'Boland', 'Damo', 'Massey'],
-  ['Nomack', 'Nate', 'Braeden', 'Raceer'],
-  ['LD', 'JAKOB', 'El', 'Bully'],
-  ['Pio', 'Vinnie', 'Nick B', 'Reid'],
-  ['Sheridan', 'Richard', 'Nelson', 'Newdad'],
-  ['Ondercin', 'Levi', 'Bombino', 'Basso'],
-  ['Jack', 'Josh', 'Nabs', 'Nate Gurr'],
+// The official lineup, one team per tee time. Each player is [id, name]. Ids
+// never change once a player has one (phones remember who they are by id), so
+// a player who moves team keeps their id and a new player gets a new one.
+const LINEUP = [
+  { time: '12:00', players: [['p1-1', 'Monik'], ['p2-4', 'Dove'], ['p1-5', 'Ben H'], ['p1-4', 'Meth']] },
+  { time: '12:08', players: [['p2-1', 'Degroot'], ['p2-2', 'Frauts'], ['p8-4', 'Basso'], ['p2-5', 'Alonzo']] },
+  { time: '12:16', players: [['p3-1', 'Slater'], ['p3-2', 'Boland'], ['p3-5', 'Damon'], ['p3-6', 'Wilson']] },
+  { time: '12:24', players: [['p4-1', 'Nomack'], ['p4-2', 'Nate'], ['p4-3', 'Braeden'], ['p4-4', 'Raceer']] },
+  { time: '12:32', players: [['p5-1', 'LD'], ['p5-2', 'JAKOB'], ['p5-5', 'Ethan'], ['p5-4', 'Bully']] },
+  { time: '12:40', players: [['p6-1', 'Pio'], ['p6-2', 'Vinnie'], ['p6-5', 'Bradley'], ['p6-4', 'Reid']] },
+  { time: '12:40', players: [['p7-1', 'Sheridan'], ['p7-2', 'Richard'], ['p7-3', 'Nelson'], ['p7-5', 'Weapon']] },
+  { time: '12:48', players: [['p8-1', 'Ondercin'], ['p2-3', 'Pres'], ['p8-3', 'Bombino'], ['p8-2', 'Levi']] },
+  { time: '12:56', players: [['p9-1', 'Jack'], ['p9-2', 'Josh'], ['p9-3', 'Nabs'], ['p9-4', 'Nate Gurr']] },
 ];
 
 export function defaultConfig() {
   return {
-    teams: TEAM_PLAYERS.map((names, i) => ({
+    teams: LINEUP.map((group, i) => ({
       id: `t${i + 1}`,
       name: `Team ${i + 1}`,
       hcpOverride: null,
-      players: names.map((name, j) => ({ id: `p${i + 1}-${j + 1}`, name, hcp: null })),
+      players: group.players.map(([id, name]) => ({ id, name, hcp: null })),
     })),
-    teeTimes: [],
+    teeTimes: LINEUP.map((group, i) => ({ id: `g${i + 1}`, time: group.time, startHole: 1, teamIds: [`t${i + 1}`] })),
     settings: {
       tee: 'Tournament',
       // How a team handicap is built from player handicaps when none is set directly.

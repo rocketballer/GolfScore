@@ -129,3 +129,13 @@ test('hole competition wording and limits', async () => {
   assert.equal(GAME_TYPES.ctp.format(0), 'Hole in one');
   assert.equal(GAME_TYPES.ld.min, 1);
 });
+
+test('official lineup: 9 tee times, players keep their ids when they move teams', () => {
+  const c = defaultConfig();
+  assert.deepEqual(c.teeTimes.map((g) => [g.time, g.startHole, g.teamIds[0]]).slice(0, 2), [['12:00', 1, 't1'], ['12:08', 1, 't2']]);
+  assert.equal(c.teeTimes.length, 9);
+  const ids = c.teams.flatMap((t) => t.players.map((p) => p.id));
+  assert.equal(new Set(ids).size, 36, 'player ids are unique');
+  const dove = c.teams.flatMap((t) => t.players.map((p) => ({ ...p, team: t.id }))).find((p) => p.name === 'Dove');
+  assert.deepEqual([dove.id, dove.team], ['p2-4', 't1']);
+});
