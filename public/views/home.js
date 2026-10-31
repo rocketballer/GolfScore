@@ -64,8 +64,7 @@ function render() {
       <div class="addr"><div><b>${c.name}</b><div class="small muted">${c.address}</div></div>
       <a class="btn btn-outline" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c.name}, ${c.address}`)}">Directions</a></div>
     </div>
-    <div class="footer-links"><a class="link-btn" href="#admin">Admin setup</a>
-      <div class="small muted">Header photo: <a href="https://unsplash.com/photos/a-golf-course-is-surrounded-by-trees-EGQ0m5QyNu8" target="_blank" rel="noopener">Keith Tanner on Unsplash</a></div></div>`;
+    <div class="footer-links"><a class="link-btn" href="#admin">Admin setup</a></div>`;
 }
 
 export default { render, mounted: loadWeather };
