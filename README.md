@@ -6,7 +6,7 @@ It is a phone-first web app with the same sections as Squabbit:
 
 | Squabbit | Here |
 |---|---|
-| Home › About (schedule, weather, location, contact) | Same, plus a live leaders card and a format card |
+| Home › About (schedule, weather, location, contact) | Same minus the contact card, plus a live leaders card and a format card |
 | Home › Players (search, 36 players, handicaps) | Same, sortable by name, team or handicap |
 | Leaderboard › Scramble › Overall / Round 1 | Same: expandable teams, hole-by-hole grid, gross/net toggle once handicaps exist |
 | Leaderboard › Games › Hole competitions | Hole 6 closest to the pin, hole 10 longest drive |
